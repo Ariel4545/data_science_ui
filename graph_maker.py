@@ -23,10 +23,13 @@ class Window(customtkinter.CTk):
         self.protocol("WM_DELETE_WINDOW", self.on_close)
         self.resizable(False, False)
         # variables
-        self.marker = customtkinter.StringVar()
+        self.marker_var = customtkinter.StringVar()
         self.marker_v = ['o', '*', '.', ',', 'x', 'X', '+', 'P', 's', 'D', 'd', 'p', 'H', 'h', 'v', '^', '<', '>', '1',
                          '2',
                          '3', '4', '|', '_']
+        self.line_var = customtkinter.StringVar()
+        self.line_v = ['-', ':', '--', '-.', '']
+
         # make ui components
         title = customtkinter.CTkLabel(self, text='Graphical user interface for Matplotlib',
                                        text_font='young 14 underline')
@@ -39,16 +42,20 @@ class Window(customtkinter.CTk):
         graph_button = customtkinter.CTkButton(self, text='Make a graph', command=self.make_graph)
         styles_title = customtkinter.CTkLabel(self, text='Change styles!',
                                               text_font='young 12 bold')
-        marker_title = customtkinter.CTkLabel(self, text='Choose marker',
+        marker_title = customtkinter.CTkLabel(self, text='Choose marker_var',
                                               text_font='young 10 underline')
-        marker_select = customtkinter.CTkComboBox(self, state='readonly', variable=self.marker, values=self.marker_v,
+        marker_select = customtkinter.CTkComboBox(self, state='readonly', variable=self.marker_var, values=self.marker_v,
                                                   fg_color='black', command=self.change_marker)
+        line_style_title = customtkinter.CTkLabel(self, text='Choose line_var style',
+                                              text_font='young 10 underline')
+        line_select = customtkinter.CTkComboBox(self, state='readonly', variable=self.line_var, values=self.line_v,
+                                                fg_color='black', command=self.change_line)
         sizes_title = customtkinter.CTkLabel(self, text='Change sizes!',
                                               text_font='young 12 bold')
         dot_title = customtkinter.CTkLabel(self, text='Choose dot size',
                                               text_font='young 10 underline')
         self.dot_select = customtkinter.CTkEntry(self)
-        line_title = customtkinter.CTkLabel(self, text='Choose line size',
+        line_title = customtkinter.CTkLabel(self, text='Choose line_var size',
                                            text_font='young 10 underline')
         self.line_select = customtkinter.CTkEntry(self)
         # place ui components
@@ -59,7 +66,9 @@ class Window(customtkinter.CTk):
         self.y_entry.grid(row=2, column=2)
         styles_title.grid(row=3, column=1)
         marker_title.grid(row=4, column=0)
+        line_style_title.grid(row=4, column=2)
         marker_select.grid(row=5, column=0)
+        line_select.grid(row=5, column=2)
         sizes_title.grid(row=6, column=1)
         dot_title.grid(row=7, column=0)
         line_title.grid(row=7, column=2)
@@ -73,8 +82,8 @@ class Window(customtkinter.CTk):
         y_values = numpy.array(self.y_entry.get().split(' '))
         print(self.change_dot_size())
         try:
-            plt.plot(x_values, y_values, marker=self.change_marker(self.marker.get()), ms=self.change_dot_size(),
-                     linewidth=self.change_line_size())
+            plt.plot(x_values, y_values, marker=self.change_marker(self.marker_var.get()), ms=self.change_dot_size(),
+                     linewidth=self.change_line_size(), linestyle=self.change_line(self.line_var.get()))
             plt.show()
         except BaseException:
             messagebox.showerror('error', 'an error occurred')
@@ -87,6 +96,14 @@ class Window(customtkinter.CTk):
         else:
             self.chosen_marker = 'o'
             return self.chosen_marker
+
+    def change_line(self, line_style):
+        if line_style:
+            self.chosen_line = line_style
+            return self.chosen_line
+        else:
+            self.chosen_line = '-'
+            return self.chosen_line
 
     def change_dot_size(self):
         self.chosen_dot_size = self.dot_select.get()
