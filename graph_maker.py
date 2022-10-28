@@ -34,9 +34,9 @@ class Window(customtkinter.CTk):
         title = customtkinter.CTkLabel(self, text='Graphical user interface for Matplotlib',
                                        text_font='young 14 underline')
         x_title = customtkinter.CTkLabel(self, text='x values:',
-                                       text_font='young 10 underline')
+                                         text_font='young 10 underline')
         y_title = customtkinter.CTkLabel(self, text='y values:',
-                                       text_font='young 10 underline')
+                                         text_font='young 10 underline')
         self.x_entry = customtkinter.CTkEntry(self)
         self.y_entry = customtkinter.CTkEntry(self)
         graph_button = customtkinter.CTkButton(self, text='Make a graph', command=self.make_graph)
@@ -44,19 +44,31 @@ class Window(customtkinter.CTk):
                                               text_font='young 12 bold')
         marker_title = customtkinter.CTkLabel(self, text='Choose marker_var',
                                               text_font='young 10 underline')
-        marker_select = customtkinter.CTkComboBox(self, state='readonly', variable=self.marker_var, values=self.marker_v,
+        marker_select = customtkinter.CTkComboBox(self, state='readonly', variable=self.marker_var,
+                                                  values=self.marker_v,
                                                   fg_color='black', command=self.change_marker)
-        line_style_title = customtkinter.CTkLabel(self, text='Choose line_var style',
-                                              text_font='young 10 underline')
+        line_style_title = customtkinter.CTkLabel(self, text='Choose line style',
+                                                  text_font='young 10 underline')
         line_select = customtkinter.CTkComboBox(self, state='readonly', variable=self.line_var, values=self.line_v,
                                                 fg_color='black', command=self.change_line)
         sizes_title = customtkinter.CTkLabel(self, text='Change sizes!',
-                                              text_font='young 12 bold')
+                                             text_font='young 12 bold')
         dot_title = customtkinter.CTkLabel(self, text='Choose dot size',
-                                              text_font='young 10 underline')
-        self.dot_select = customtkinter.CTkEntry(self)
-        line_title = customtkinter.CTkLabel(self, text='Choose line_var size',
                                            text_font='young 10 underline')
+        self.dot_select = customtkinter.CTkEntry(self)
+        line_title = customtkinter.CTkLabel(self, text='Choose line size',
+                                            text_font='young 10 underline')
+        titles_title = customtkinter.CTkLabel(self, text='Change titles!',
+                                              text_font='young 12 bold')
+        main_title_ = customtkinter.CTkLabel(self, text='Write main title',
+                                             text_font='young 10 underline')
+        self.main_title_entry = customtkinter.CTkEntry(self)
+        x_title_ = customtkinter.CTkLabel(self, text='Write x-label title',
+                                          text_font='young 10 underline')
+        self.x_title_entry = customtkinter.CTkEntry(self)
+        y_title_ = customtkinter.CTkLabel(self, text='Write y-label title',
+                                          text_font='young 10 underline')
+        self.y_title_entry = customtkinter.CTkEntry(self)
         self.line_select = customtkinter.CTkEntry(self)
         # place ui components
         title.grid(row=0, column=1)
@@ -74,7 +86,14 @@ class Window(customtkinter.CTk):
         line_title.grid(row=7, column=2)
         self.dot_select.grid(row=8, column=0)
         self.line_select.grid(row=8, column=2)
-        graph_button.grid(row=10, column=1)
+        titles_title.grid(row=9, column=1)
+        main_title_.grid(row=10, column=1)
+        x_title_.grid(row=10, column=0)
+        y_title_.grid(row=10, column=2)
+        self.x_title_entry.grid(row=11, column=0)
+        self.main_title_entry.grid(row=11, column=1)
+        self.y_title_entry.grid(row=11, column=2)
+        graph_button.grid(row=12, column=1, pady=10)
 
     # create the graph:
     def make_graph(self):
@@ -84,6 +103,14 @@ class Window(customtkinter.CTk):
         try:
             plt.plot(x_values, y_values, marker=self.change_marker(self.marker_var.get()), ms=self.change_dot_size(),
                      linewidth=self.change_line_size(), linestyle=self.change_line(self.line_var.get()))
+            # titles set
+            if self.change_x_title():
+                plt.xlabel(self.chosen_x_title)
+            if self.change_y_title():
+                plt.ylabel(self.chosen_y_title)
+            if self.change_main_title():
+                plt.title(self.chosen_main_title)
+            # open the graph window
             plt.show()
         except BaseException:
             messagebox.showerror('error', 'an error occurred')
@@ -122,6 +149,27 @@ class Window(customtkinter.CTk):
         else:
             self.line_value = 2
             return self.line_value
+
+    def change_x_title(self):
+        self.chosen_x_title = self.x_title_entry.get()
+        if self.chosen_x_title:
+            return True
+        else:
+            return False
+
+    def change_y_title(self):
+        self.chosen_y_title = self.y_title_entry.get()
+        if self.chosen_y_title:
+            return True
+        else:
+            return False
+
+    def change_main_title(self):
+        self.chosen_main_title = self.main_title_entry.get()
+        if self.chosen_main_title:
+            return True
+        else:
+            return False
 
     # close the application  when the 'x' is pressed
     def on_close(self, event=0):
