@@ -8,8 +8,8 @@ from tkinter import messagebox
 # window creations
 
 class Window(customtkinter.CTk):
-    WIDTH = 700
-    HEIGHT = 520
+    WIDTH = 600
+    HEIGHT = 400
 
     def __init__(self):
         super().__init__()
@@ -29,7 +29,7 @@ class Window(customtkinter.CTk):
                          '3', '4', '|', '_']
         self.line_var = customtkinter.StringVar()
         self.line_v = ['-', ':', '--', '-.', '']
-
+        self.i = customtkinter.IntVar(value=3)
         # make ui components
         title = customtkinter.CTkLabel(self, text='Graphical user interface for Matplotlib',
                                        text_font='young 14 underline')
@@ -58,6 +58,7 @@ class Window(customtkinter.CTk):
         self.dot_select = customtkinter.CTkEntry(self)
         line_title = customtkinter.CTkLabel(self, text='Choose line size',
                                             text_font='young 10 underline')
+        self.line_select = customtkinter.CTkEntry(self)
         titles_title = customtkinter.CTkLabel(self, text='Change titles!',
                                               text_font='young 12 bold')
         main_title_ = customtkinter.CTkLabel(self, text='Write main title',
@@ -69,7 +70,11 @@ class Window(customtkinter.CTk):
         y_title_ = customtkinter.CTkLabel(self, text='Write y-label title',
                                           text_font='young 10 underline')
         self.y_title_entry = customtkinter.CTkEntry(self)
-        self.line_select = customtkinter.CTkEntry(self)
+        grid_title = titles_title = customtkinter.CTkLabel(self, text='Change grid modes!',
+                                              text_font='young 12 bold')
+        x_grid = customtkinter.CTkRadioButton(self, text='x', variable=self.i, value=1)
+        y_grid = customtkinter.CTkRadioButton(self, text='y', variable=self.i, value=2)
+        both_grid = customtkinter.CTkRadioButton(self, text='Both', variable=self.i, value=3)
         # place ui components
         title.grid(row=0, column=1)
         x_title.grid(row=1, column=0)
@@ -93,13 +98,17 @@ class Window(customtkinter.CTk):
         self.x_title_entry.grid(row=11, column=0)
         self.main_title_entry.grid(row=11, column=1)
         self.y_title_entry.grid(row=11, column=2)
-        graph_button.grid(row=12, column=1, pady=10)
+        grid_title.grid(row=12, column=1)
+        x_grid.grid(row=13, column=0)
+        both_grid.grid(row=13, column=1)
+        y_grid.grid(row=13, column=2)
+        graph_button.grid(row=14, column=1, pady=10)
 
     # create the graph:
     def make_graph(self):
+        self.change_grid_modes()
         x_values = numpy.array(self.x_entry.get().split(' '))
         y_values = numpy.array(self.y_entry.get().split(' '))
-        print(self.change_dot_size())
         try:
             plt.plot(x_values, y_values, marker=self.change_marker(self.marker_var.get()), ms=self.change_dot_size(),
                      linewidth=self.change_line_size(), linestyle=self.change_line(self.line_var.get()))
@@ -110,6 +119,8 @@ class Window(customtkinter.CTk):
                 plt.ylabel(self.chosen_y_title)
             if self.change_main_title():
                 plt.title(self.chosen_main_title)
+            # grid option set
+            plt.grid(axis=self.change_grid_modes())
             # open the graph window
             plt.show()
         except BaseException:
@@ -170,6 +181,14 @@ class Window(customtkinter.CTk):
             return True
         else:
             return False
+
+    def change_grid_modes(self):
+        if self.i.get() == 1:
+           return 'x'
+        elif self.i.get() == 2:
+            return 'y'
+        else:
+            return 'both'
 
     # close the application  when the 'x' is pressed
     def on_close(self, event=0):
