@@ -9,7 +9,7 @@ from tkinter import messagebox
 
 class Window(customtkinter.CTk):
     WIDTH = 600
-    HEIGHT = 400
+    HEIGHT = 430
 
     def __init__(self):
         super().__init__()
@@ -70,7 +70,7 @@ class Window(customtkinter.CTk):
         y_title_ = customtkinter.CTkLabel(self, text='Write y-label title',
                                           text_font='young 10 underline')
         self.y_title_entry = customtkinter.CTkEntry(self)
-        grid_title = titles_title = customtkinter.CTkLabel(self, text='Change grid modes!',
+        grid_title = customtkinter.CTkLabel(self, text='Change grid modes!',
                                               text_font='young 12 bold')
         x_grid = customtkinter.CTkRadioButton(self, text='x', variable=self.i, value=1)
         y_grid = customtkinter.CTkRadioButton(self, text='y', variable=self.i, value=2)
