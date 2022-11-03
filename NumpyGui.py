@@ -13,21 +13,23 @@ class Window(CTk):
         # window
         self.geometry(f'{self.width}x{self.height}')
         self.title('Gui for numpy')
-        # text box
-        self.number_input = tkinter.Text(self, width=80, height=30, wrap=WORD)
+        # text boxes
+        self.number_input = tkinter.Text(self, width=80, height=20, wrap=WORD)
         self.number_input.pack()
+        self.snumber_input = tkinter.Text(self, width=80, height=10, wrap=WORD)
+        self.snumber_input.pack()
         # menus
         menu = tkinter.Menu(self)
         self.config(menu=menu)
 
         arithmetic_menu = tkinter.Menu(menu, tearoff=False)
-        menu.add_cascade(label='arithmetic', menu=arithmetic_menu, state=DISABLED)
-        arithmetic_menu.add_command(label='Addition')
-        arithmetic_menu.add_command(label='Subtraction')
-        arithmetic_menu.add_command(label='Multiplication')
-        arithmetic_menu.add_command(label='Division')
-        arithmetic_menu.add_command(label='Power')
-        arithmetic_menu.add_command(label='Remainder')
+        menu.add_cascade(label='arithmetic', menu=arithmetic_menu, state=ACTIVE)
+        arithmetic_menu.add_command(label='Addition', command=lambda: self.arithmetics('Addition'))
+        arithmetic_menu.add_command(label='Subtraction', command=lambda: self.arithmetics('Subtraction'))
+        arithmetic_menu.add_command(label='Multiplication', command=lambda: self.arithmetics('Multiplication'))
+        arithmetic_menu.add_command(label='Division', command=lambda: self.arithmetics('Division'))
+        arithmetic_menu.add_command(label='Power', command=lambda: self.arithmetics('Power'))
+        arithmetic_menu.add_command(label='Remainder', command=lambda: self.arithmetics('Remainder'))
 
         rounding_menu = tkinter.Menu(menu, tearoff=False)
         menu.add_cascade(label='Rounding', menu=rounding_menu)
@@ -59,7 +61,35 @@ class Window(CTk):
             if not(str(i).isdigit()):
                 self.list.remove(i)
         self.array = numpy.array(self.list).astype(int)
+        try:
+            self.scontent = (self.snumber_input.get('1.0', 'end'))
+            self.slist = list(self.scontent)
+            for x in self.slist:
+                if not (str(x).isdigit()):
+                    self.slist.remove(x)
+            self.sarray = numpy.array(self.slist).astype(int)
+            return self.sarray
+        except:
+            pass
         return self.array
+
+    def arithmetics(self, mode):
+        self.turn_into_array()
+        if mode == 'Addition':
+            result = numpy.add(self.array, self.sarray)
+        elif mode == 'Subtraction':
+            result = numpy.subtract(self.array, self.sarray)
+        elif mode == 'Multiplication':
+            result = numpy.multiply(self.array, self.sarray)
+        elif mode == 'Division':
+            result = numpy.divide(self.array, self.sarray)
+        elif mode == 'Power':
+            result = numpy.power(self.array, self.sarray)
+        elif mode == 'Remainder':
+            result = numpy.remainder(self.array, self.sarray)
+        self.result_page(result)
+
+
 
     def round(self, mode):
         self.turn_into_array()
@@ -99,6 +129,7 @@ class Window(CTk):
         elif mode == 'Ptp':
             result = numpy.ptp(self.array)
         self.result_page(result)
+
 
     def result_page(self, result):
         result_root = tkinter.Toplevel()
