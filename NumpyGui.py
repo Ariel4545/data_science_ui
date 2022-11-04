@@ -30,6 +30,7 @@ class Window(CTk):
         arithmetic_menu.add_command(label='Division', command=lambda: self.arithmetics('Division'))
         arithmetic_menu.add_command(label='Power', command=lambda: self.arithmetics('Power'))
         arithmetic_menu.add_command(label='Remainder', command=lambda: self.arithmetics('Remainder'))
+        arithmetic_menu.add_command(label='Absolute', command=lambda: self.arithmetics('Absolute'))
 
         rounding_menu = tkinter.Menu(menu, tearoff=False)
         menu.add_cascade(label='Rounding', menu=rounding_menu)
@@ -51,8 +52,16 @@ class Window(CTk):
         statistics_menu.add_command(label='Median', command=lambda: self.statistics('Median'))
         statistics_menu.add_command(label='Average', command=lambda: self.statistics('Average'))
         statistics_menu.add_command(label='Mean', command=lambda: self.statistics('Mean'))
+        statistics_menu.add_command(label='Min', command=lambda: self.statistics('Min'))
+        statistics_menu.add_command(label='Max', command=lambda: self.statistics('Max'))
         statistics_menu.add_command(label='Std', command=lambda: self.statistics('Std'))
         statistics_menu.add_command(label='Ptp', command=lambda: self.statistics('Ptp'))
+
+        random_menu = tkinter.Menu(menu, tearoff=False)
+        menu.add_cascade(label='Random', menu=random_menu)
+        random_menu.add_command(label='Choice', command=lambda: self.random('Choice'))
+        random_menu.add_command(label='Generate unit interval', command=lambda: self.random('Generate unit interval'))
+
 
     def turn_into_array(self):
         self.content = (self.number_input.get('1.0', 'end'))
@@ -87,9 +96,10 @@ class Window(CTk):
             result = numpy.power(self.array, self.sarray)
         elif mode == 'Remainder':
             result = numpy.remainder(self.array, self.sarray)
-        self.result_page(result)
-
-
+        elif mode == 'Absolute':
+            result = numpy.abs(self.array)
+        if self.array:
+            self.result_page(result)
 
     def round(self, mode):
         self.turn_into_array()
@@ -101,7 +111,8 @@ class Window(CTk):
             result = numpy.floor(self.array)
         elif mode == 'Ceil':
             result = numpy.ceil(self.array)
-        self.result_page(result)
+        if self.array:
+            self.result_page(result)
 
     def trigonometry(self, mode):
         if mode == 'Sin':
@@ -114,7 +125,8 @@ class Window(CTk):
             result = numpy.deg2rad(self.array)
         elif mode == 'r2d':
             result = numpy.rad2deg(self.array)
-        self.result_page(result)
+        if self.array:
+            self.result_page(result)
 
     def statistics(self, mode):
         self.turn_into_array()
@@ -124,12 +136,24 @@ class Window(CTk):
             result = numpy.average(self.array)
         elif mode == 'Mean':
             result = numpy.mean(self.array)
+        elif mode == 'Min':
+            result = numpy.min(self.array)
+        elif mode == 'Max':
+            result = numpy.max(self.array)
         elif mode == 'Std':
             result = numpy.std(self.array)
         elif mode == 'Ptp':
             result = numpy.ptp(self.array)
-        self.result_page(result)
+        if self.array:
+            self.result_page(result)
 
+    def random(self, mode):
+        self.turn_into_array()
+        if mode == 'Choice':
+            result = numpy.random.choice(self.array)
+        elif mode == 'Generate unit interval':
+            result = numpy.random.rand()
+        self.result_page(result)
 
     def result_page(self, result):
         result_root = tkinter.Toplevel()
@@ -138,6 +162,7 @@ class Window(CTk):
         copy_button = CTkButton(result_root, text='Copy', command=lambda: pyperclip.copy(str(result)), width=10)
         result_output.pack()
         copy_button.pack()
+
 
 if __name__ == '__main__':
     win = Window()
