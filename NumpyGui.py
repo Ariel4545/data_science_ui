@@ -28,7 +28,10 @@ class Window(CTk):
         arithmetic_menu.add_command(label='Subtraction', command=lambda: self.arithmetics('Subtraction'))
         arithmetic_menu.add_command(label='Multiplication', command=lambda: self.arithmetics('Multiplication'))
         arithmetic_menu.add_command(label='Division', command=lambda: self.arithmetics('Division'))
+        arithmetic_menu.add_separator()
         arithmetic_menu.add_command(label='Power', command=lambda: self.arithmetics('Power'))
+        arithmetic_menu.add_command(label='square', command=lambda: self.arithmetics('square'))
+        arithmetic_menu.add_command(label='square root', command=lambda: self.arithmetics('square root'))
         arithmetic_menu.add_command(label='Remainder', command=lambda: self.arithmetics('Remainder'))
         arithmetic_menu.add_command(label='Absolute', command=lambda: self.arithmetics('Absolute'))
 
@@ -56,6 +59,7 @@ class Window(CTk):
         statistics_menu.add_command(label='Max', command=lambda: self.statistics('Max'))
         statistics_menu.add_command(label='Std', command=lambda: self.statistics('Std'))
         statistics_menu.add_command(label='Ptp', command=lambda: self.statistics('Ptp'))
+
 
         random_menu = tkinter.Menu(menu, tearoff=False)
         menu.add_cascade(label='Random', menu=random_menu)
@@ -98,6 +102,10 @@ class Window(CTk):
             result = numpy.remainder(self.array, self.sarray)
         elif mode == 'Absolute':
             result = numpy.abs(self.array)
+        elif mode == 'square root':
+            result = numpy.sqrt(self.array)
+        elif mode == 'square':
+            result = numpy.square(self.array)
         if self.array:
             self.result_page(result)
 
