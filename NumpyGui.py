@@ -60,20 +60,28 @@ class Window(CTk):
         statistics_menu.add_command(label='Std', command=lambda: self.statistics('Std'))
         statistics_menu.add_command(label='Ptp', command=lambda: self.statistics('Ptp'))
 
-
         random_menu = tkinter.Menu(menu, tearoff=False)
         menu.add_cascade(label='Random', menu=random_menu)
         random_menu.add_command(label='Choice', command=lambda: self.random('Choice'))
         random_menu.add_command(label='Generate unit interval', command=lambda: self.random('Generate unit interval'))
 
+        data_menu = tkinter.Menu(menu, tearoff=False)
+        menu.add_cascade(label='Data operations', menu=data_menu)
+        data_menu.add_command(label='Filter by sizes', command=lambda: self.data_operations(mode='size'))
+        data_menu.add_command(label='Filter by parity', command=lambda: self.data_operations(mode='parity'))
+        data_menu.add_command(label='Sort', command=lambda: self.data_operations(mode='sort'))
+        data_menu.add_command(label='Search', command=lambda: self.data_operations(mode='search'))
+
 
     def turn_into_array(self):
         self.content = (self.number_input.get('1.0', 'end'))
-        self.list = list(self.content)
-        for i in self.list:
-            if not(str(i).isdigit()):
-                self.list.remove(i)
-        self.array = numpy.array(self.list).astype(int)
+        self.list = (self.content).split(' ')
+        # for i in self.list:
+        #     # if not(str(i).isdigit()):
+        #     #     self.list.remove(i)
+        self.array = numpy.array(self.list, dtype='int32')
+        print(self.list)
+        print(self.array)
         try:
             self.scontent = (self.snumber_input.get('1.0', 'end'))
             self.slist = list(self.scontent)
@@ -123,6 +131,7 @@ class Window(CTk):
             self.result_page(result)
 
     def trigonometry(self, mode):
+        self.turn_into_array()
         if mode == 'Sin':
             result = numpy.sin(self.array)
         elif mode == 'Cos':
@@ -162,6 +171,92 @@ class Window(CTk):
         elif mode == 'Generate unit interval':
             result = numpy.random.rand()
         self.result_page(result)
+
+    def data_operations(self, mode):
+        self.turn_into_array()
+        if mode == 'size':
+            def change_condition():
+                if self.size_con_value == '>':
+                    self.size_con_value = '<'
+                else:
+                    self.size_con_value = '>'
+                condition_button.configure(text=self.size_con_value)
+            def enter():
+                filter_array = []
+                conditional_number = int(condition_input.get())
+                for element in self.array:
+                    if self.size_con_value == '>':
+                        if element > conditional_number:
+                            filter_array.append(True)
+                        else:
+                            filter_array.append(False)
+                    else:
+                        if element < conditional_number:
+                            filter_array.append(True)
+                        else:
+                            filter_array.append(False)
+                result = self.array[filter_array]
+                print(self.array, filter_array)
+                self.result_page(result)
+                size_root.destroy()
+            self.size_con_value = '>'
+            size_root = CTkToplevel()
+            size_root.title('filter by sizes')
+            condition_input = CTkEntry(size_root)
+            condition_button = CTkButton(size_root, text=self.size_con_value, command=change_condition)
+            condition_label = CTkLabel(size_root, text='your Array')
+            enter_button = CTkButton(size_root, text='Enter', command=enter)
+            condition_input.grid(row=1, column=0)
+            condition_button.grid(row=1, column=1)
+            condition_label.grid(row=1, column=2)
+            enter_button.grid(row=2, column=1)
+        elif mode == 'parity':
+            def change_condition():
+                if self.parity_con_value == 'even':
+                    self.parity_con_value = 'odd'
+                else:
+                    self.parity_con_value = 'even'
+                condition_button.configure(text=self.parity_con_value)
+            def enter():
+                filter_array = []
+                for element in self.array:
+                    if self.parity_con_value == 'even':
+                        if element % 2 == 0:
+                            filter_array.append(True)
+                        else:
+                            filter_array.append(False)
+                    else:
+                        if element % 2 != 0:
+                            filter_array.append(True)
+                        else:
+                            filter_array.append(False)
+                result = self.array[filter_array]
+                self.result_page(result)
+            parity_root = CTkToplevel()
+            self.parity_con_value = 'even'
+            parity_root.title('filter by parity')
+            condition_button = CTkButton(parity_root, text=self.parity_con_value, command=change_condition)
+            condition_text = CTkLabel(parity_root, text='filter by:')
+            enter_button = CTkButton(parity_root, text='Enter', command=enter)
+            condition_text.grid(row=1, column=0)
+            condition_button.grid(row=1, column=1)
+            enter_button.grid(row=2, column=1)
+
+        elif mode == 'sort':
+            result = numpy.sort(self.array)
+            self.result_page(result)
+
+        elif mode == 'search':
+            def enter():
+                searched_value = int(search_input.get())
+                result = numpy.where(self.array == searched_value)[0]
+                self.result_page(result)
+            search_root = CTkToplevel()
+            search_root.title('search')
+            search_input = CTkEntry(search_root)
+            enter_button = CTkButton(search_root, text='Enter', command=enter)
+            search_input.grid(row=1, column=1)
+            enter_button.grid(row=2, column=1)
 
     def result_page(self, result):
         result_root = tkinter.Toplevel()
