@@ -64,6 +64,7 @@ class Window(CTk):
         menu.add_cascade(label='Random', menu=random_menu)
         random_menu.add_command(label='Choice', command=lambda: self.random('Choice'))
         random_menu.add_command(label='Generate unit interval', command=lambda: self.random('Generate unit interval'))
+        random_menu.add_command(label='Randint', command=lambda: self.random('Randint'))
 
         data_menu = tkinter.Menu(menu, tearoff=False)
         menu.add_cascade(label='Data operations', menu=data_menu)
@@ -71,7 +72,13 @@ class Window(CTk):
         data_menu.add_command(label='Filter by parity', command=lambda: self.data_operations(mode='parity'))
         data_menu.add_command(label='Sort', command=lambda: self.data_operations(mode='sort'))
         data_menu.add_command(label='Search', command=lambda: self.data_operations(mode='search'))
+        data_menu.add_command(label='Get shape', command=lambda: self.data_operations(mode='Get shape'))
 
+        ns_menu = tkinter.Menu(menu, tearoff=False)
+        menu.add_cascade(label='Number systems', menu=ns_menu)
+        ns_menu.add_command(label='Binary', command=lambda: self.number_system(mode='Binary'))
+        ns_menu.add_command(label='Octal', command=lambda: self.number_system(mode='Octal'))
+        ns_menu.add_command(label='Hexadecimal', command=lambda: self.number_system(mode='Hexadecimal'))
 
     def turn_into_array(self):
         self.content = (self.number_input.get('1.0', 'end'))
@@ -84,11 +91,11 @@ class Window(CTk):
         print(self.array)
         try:
             self.scontent = (self.snumber_input.get('1.0', 'end'))
-            self.slist = list(self.scontent)
-            for x in self.slist:
-                if not (str(x).isdigit()):
-                    self.slist.remove(x)
-            self.sarray = numpy.array(self.slist).astype(int)
+            self.slist = (self.scontent).split(' ')
+            # for x in self.slist:
+            #     if not (str(x).isdigit()):
+            #         self.slist.remove(x)
+            self.sarray = numpy.array(self.slist, dtype='int32')
             return self.sarray
         except:
             pass
@@ -97,7 +104,7 @@ class Window(CTk):
     def arithmetics(self, mode):
         self.turn_into_array()
         if mode == 'Addition':
-            result = numpy.add(self.array, self.sarray)
+            result = (numpy.add(self.array, self.sarray))
         elif mode == 'Subtraction':
             result = numpy.subtract(self.array, self.sarray)
         elif mode == 'Multiplication':
@@ -170,6 +177,11 @@ class Window(CTk):
             result = numpy.random.choice(self.array)
         elif mode == 'Generate unit interval':
             result = numpy.random.rand()
+        elif mode == 'Randint':
+            result = numpy.random.randint(self.array, self.sarray)
+        # elif mode == 'Shuffle':
+        #     self.number_input.configure(text=numpy.random.shuffle(self.array))
+
         self.result_page(result)
 
     def data_operations(self, mode):
@@ -181,6 +193,7 @@ class Window(CTk):
                 else:
                     self.size_con_value = '>'
                 condition_button.configure(text=self.size_con_value)
+
             def enter():
                 filter_array = []
                 conditional_number = int(condition_input.get())
@@ -199,6 +212,7 @@ class Window(CTk):
                 print(self.array, filter_array)
                 self.result_page(result)
                 size_root.destroy()
+
             self.size_con_value = '>'
             size_root = CTkToplevel()
             size_root.title('filter by sizes')
@@ -217,6 +231,7 @@ class Window(CTk):
                 else:
                     self.parity_con_value = 'even'
                 condition_button.configure(text=self.parity_con_value)
+
             def enter():
                 filter_array = []
                 for element in self.array:
@@ -232,6 +247,7 @@ class Window(CTk):
                             filter_array.append(False)
                 result = self.array[filter_array]
                 self.result_page(result)
+
             parity_root = CTkToplevel()
             self.parity_con_value = 'even'
             parity_root.title('filter by parity')
@@ -251,12 +267,29 @@ class Window(CTk):
                 searched_value = int(search_input.get())
                 result = numpy.where(self.array == searched_value)[0]
                 self.result_page(result)
+
             search_root = CTkToplevel()
             search_root.title('search')
             search_input = CTkEntry(search_root)
             enter_button = CTkButton(search_root, text='Enter', command=enter)
             search_input.grid(row=1, column=1)
             enter_button.grid(row=2, column=1)
+
+        elif mode == 'Get shape':
+            self.result_page(self.array.shape)
+
+    def number_system(self, mode):
+        self.turn_into_array()
+        result = []
+        for i in self.array:
+            if mode == 'Binary':
+                 result.append(bin(i))
+            elif mode == 'Hexadecimal':
+                result.append(hex(i))
+            elif mode == 'Octal':
+                result.append(oct(i))
+            if result:
+                self.result_page(result)
 
     def result_page(self, result):
         result_root = tkinter.Toplevel()
