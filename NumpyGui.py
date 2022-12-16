@@ -41,6 +41,8 @@ class Window(CTk):
         rounding_menu.add_command(label='Rounding', command=lambda: self.round('Rounding'))
         rounding_menu.add_command(label='Floor', command=lambda: self.round('Floor'))
         rounding_menu.add_command(label='Ceil', command=lambda: self.round('Ceil'))
+        rounding_menu.add_command(label='Fix', command=lambda: self.round('fix'))
+        rounding_menu.add_command(label='Rint', command=lambda: self.round('rint'))
 
         trigonometry_menu = tkinter.Menu(menu, tearoff=False)
         menu.add_cascade(label='Trigonometry', menu=trigonometry_menu)
@@ -49,6 +51,14 @@ class Window(CTk):
         trigonometry_menu.add_command(label='Tan', command=lambda: self.trigonometry('Tan'))
         trigonometry_menu.add_command(label='Degrees Into Radians', command=lambda: self.trigonometry('d2r'))
         trigonometry_menu.add_command(label='Radians to Degrees', command=lambda: self.trigonometry('r2d'))
+        trigonometry_menu.add_separator()
+        trigonometry_menu.add_command(label='Sinh', command=lambda: self.trigonometry('sinh'))
+        trigonometry_menu.add_command(label='Cosh', command=lambda: self.trigonometry('cosh'))
+        trigonometry_menu.add_command(label='Tanh', command=lambda: self.trigonometry('tanh'))
+        trigonometry_menu.add_command(label='angles via sinh', command=lambda: self.trigonometry('arcsinh'))
+        trigonometry_menu.add_command(label='angles via cosh', command=lambda: self.trigonometry('arccosh'))
+        trigonometry_menu.add_command(label='angles via tanh', command=lambda: self.trigonometry('arctanh'))
+
 
         statistics_menu = tkinter.Menu(menu, tearoff=False)
         menu.add_cascade(label='Statistics', menu=statistics_menu)
@@ -79,6 +89,14 @@ class Window(CTk):
         ns_menu.add_command(label='Binary', command=lambda: self.number_system(mode='Binary'))
         ns_menu.add_command(label='Octal', command=lambda: self.number_system(mode='Octal'))
         ns_menu.add_command(label='Hexadecimal', command=lambda: self.number_system(mode='Hexadecimal'))
+
+        exp_menu = tkinter.Menu(menu, tearoff=False)
+        menu.add_cascade(label='Exponents', menu=exp_menu)
+        exp_menu.add_command(label='Exp', command=lambda: self.ex('exp'))
+        exp_menu.add_command(label='Exp -1', command=lambda: self.ex('exp-1'))
+        exp_menu.add_command(label='Exp 2', command=lambda: self.ex('exp2'))
+        exp_menu.add_command(label='Log 10', command=lambda: self.ex('log'))
+        exp_menu.add_command(label='Log 2', command=lambda: self.ex('log2'))
 
     def turn_into_array(self):
         self.content = (self.number_input.get('1.0', 'end'))
@@ -134,6 +152,10 @@ class Window(CTk):
             result = numpy.floor(self.array)
         elif mode == 'Ceil':
             result = numpy.ceil(self.array)
+        elif mode == 'rint':
+            result = numpy.rint(self.array)
+        elif mode == 'fix':
+           result = numpy.fix(self.array)
         if self.array:
             self.result_page(result)
 
@@ -149,6 +171,18 @@ class Window(CTk):
             result = numpy.deg2rad(self.array)
         elif mode == 'r2d':
             result = numpy.rad2deg(self.array)
+        elif mode == 'sinh':
+            result = numpy.sinh(self.array)
+        elif mode == 'cosh':
+            result = numpy.cosh(self.array)
+        elif mode == 'tanh':
+            result = numpy.tanh(self.array)
+        elif mode == 'arcsinh':
+            result = numpy.arcsinh(self.array)
+        elif mode == 'arccosh':
+            result = numpy.arccosh(self.array)
+        elif mode == 'arctanh':
+            result = numpy.arctanh(self.array)
         if self.array:
             self.result_page(result)
 
@@ -290,6 +324,22 @@ class Window(CTk):
                 result.append(oct(i))
             if result:
                 self.result_page(result)
+
+    def ex(self, mode):
+        self.turn_into_array()
+        if mode == 'exp':
+            result = numpy.exp(self.array)
+        elif mode == 'exp-1':
+            result = numpy.expm1(self.array)
+        elif mode == 'exp2':
+            result = numpy.exp2(self.array)
+        elif mode == 'log':
+            result = numpy.log10(self.array)
+        elif mode == 'log2':
+            result = numpy.log2(self.array)
+
+        if result:
+            self.result_page(result)
 
     def result_page(self, result):
         result_root = tkinter.Toplevel()
