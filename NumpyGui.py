@@ -2,10 +2,11 @@ import tkinter
 import pyperclip
 from customtkinter import *
 import numpy
+from scipy import constants
 
 
 class Window(CTk):
-    width = 646
+    width = 725
     height = 500
 
     def __init__(self):
@@ -14,10 +15,10 @@ class Window(CTk):
         self.geometry(f'{self.width}x{self.height}')
         self.title('Gui for numpy')
         # text boxes
-        self.number_input = tkinter.Text(self, width=80, height=20, wrap=WORD)
-        self.number_input.pack()
-        self.snumber_input = tkinter.Text(self, width=80, height=10, wrap=WORD)
-        self.snumber_input.pack()
+        self.number_input = tkinter.Text(self, width=90, height=20, wrap=WORD)
+        self.number_input.pack(fill=BOTH, expand=True)
+        self.snumber_input = tkinter.Text(self, width=90, height=10, wrap=WORD)
+        self.snumber_input.pack(fill=BOTH, expand=True)
         # menus
         menu = tkinter.Menu(self)
         self.config(menu=menu)
@@ -59,7 +60,6 @@ class Window(CTk):
         trigonometry_menu.add_command(label='angles via cosh', command=lambda: self.trigonometry('arccosh'))
         trigonometry_menu.add_command(label='angles via tanh', command=lambda: self.trigonometry('arctanh'))
 
-
         statistics_menu = tkinter.Menu(menu, tearoff=False)
         menu.add_cascade(label='Statistics', menu=statistics_menu)
         statistics_menu.add_command(label='Median', command=lambda: self.statistics('Median'))
@@ -75,6 +75,9 @@ class Window(CTk):
         random_menu.add_command(label='Choice', command=lambda: self.random('Choice'))
         random_menu.add_command(label='Generate unit interval', command=lambda: self.random('Generate unit interval'))
         random_menu.add_command(label='Randint', command=lambda: self.random('Randint'))
+        random_menu.add_command(label='Sample', command=lambda: self.random('sample'))
+        random_menu.add_command(label='permutation', command=lambda: self.random('permutation'))
+
 
         data_menu = tkinter.Menu(menu, tearoff=False)
         menu.add_cascade(label='Data operations', menu=data_menu)
@@ -83,6 +86,11 @@ class Window(CTk):
         data_menu.add_command(label='Sort', command=lambda: self.data_operations(mode='sort'))
         data_menu.add_command(label='Search', command=lambda: self.data_operations(mode='search'))
         data_menu.add_command(label='Get shape', command=lambda: self.data_operations(mode='Get shape'))
+        data_menu.add_command(label='Difference', command=lambda: self.data_operations(mode='Difference'))
+        data_menu.add_command(label='Product', command=lambda: self.data_operations(mode='Product'))
+        data_menu.add_command(label='LCM', command=lambda: self.data_operations(mode='LCM'))
+        data_menu.add_command(label='GCD', command=lambda: self.data_operations(mode='GCD'))
+        data_menu.add_command(label='Unique', command=lambda: self.data_operations(mode='Unique'))
 
         ns_menu = tkinter.Menu(menu, tearoff=False)
         menu.add_cascade(label='Number systems', menu=ns_menu)
@@ -97,6 +105,18 @@ class Window(CTk):
         exp_menu.add_command(label='Exp 2', command=lambda: self.ex('exp2'))
         exp_menu.add_command(label='Log 10', command=lambda: self.ex('log'))
         exp_menu.add_command(label='Log 2', command=lambda: self.ex('log2'))
+
+        const_menu = tkinter.Menu(menu, tearoff=False)
+        menu.add_cascade(label='Constant', menu=const_menu)
+        const_menu.add_command(label='Pi', command=lambda: self.const(numpy.pi))
+        const_menu.add_command(label='E', command=lambda: self.const(numpy.e))
+        const_menu.add_command(label='Golden ratio', command=lambda: self.const(constants.golden))
+        const_menu.add_command(label='Speed of light', command=lambda: self.const(constants.speed_of_light))
+        const_menu.add_command(label='E0', command=lambda: self.const(constants.epsilon_0))
+        const_menu.add_command(label='MU0', command=lambda: self.const(constants.golden))
+        const_menu.add_command(label='G', command=lambda: self.const(constants.G))
+
+        self.generate_op_num()
 
     def turn_into_array(self):
         self.content = (self.number_input.get('1.0', 'end'))
@@ -155,7 +175,7 @@ class Window(CTk):
         elif mode == 'rint':
             result = numpy.rint(self.array)
         elif mode == 'fix':
-           result = numpy.fix(self.array)
+            result = numpy.fix(self.array)
         if self.array:
             self.result_page(result)
 
@@ -213,8 +233,10 @@ class Window(CTk):
             result = numpy.random.rand()
         elif mode == 'Randint':
             result = numpy.random.randint(self.array, self.sarray)
-        # elif mode == 'Shuffle':
-        #     self.number_input.configure(text=numpy.random.shuffle(self.array))
+        elif mode == 'sample':
+            result = numpy.random.random_sample(self.array[0])
+        elif mode == 'permutation':
+            result = numpy.random.permutation(self.array)
 
         self.result_page(result)
 
@@ -311,13 +333,23 @@ class Window(CTk):
 
         elif mode == 'Get shape':
             self.result_page(self.array.shape)
+        elif mode == 'Difference':
+            self.result_page(numpy.diff(self.array))
+        elif mode == 'Product':
+            self.result_page(numpy.product(self.array))
+        elif mode == 'LCM':
+            self.result_page(numpy.lcm(self.array, self.sarray))
+        elif mode == 'GCD':
+            self.result_page(numpy.gcd(self.array, self.sarray))
+        elif mode == 'Unique':
+            self.result_page(numpy.unique(self.array))
 
     def number_system(self, mode):
         self.turn_into_array()
         result = []
         for i in self.array:
             if mode == 'Binary':
-                 result.append(bin(i))
+                result.append(bin(i))
             elif mode == 'Hexadecimal':
                 result.append(hex(i))
             elif mode == 'Octal':
@@ -341,13 +373,24 @@ class Window(CTk):
         if result:
             self.result_page(result)
 
+    def const(self, val):
+        pos = self.number_input.index(INSERT)
+        self.number_input.insert(pos, val)
+
     def result_page(self, result):
         result_root = tkinter.Toplevel()
-        result_root.title('Result')
-        result_output = CTkLabel(result_root, text=f'{result}', fg_color='black')
-        copy_button = CTkButton(result_root, text='Copy', command=lambda: pyperclip.copy(str(result)), width=10)
-        result_output.pack()
-        copy_button.pack()
+        result_root.title('Result:')
+        frame = CTkFrame(result_root)
+        result_output = CTkLabel(frame, text=f'{result}', fg_color='black')
+        copy_button = CTkButton(frame, text='Copy', command=lambda: pyperclip.copy(str(result)), width=10)
+        frame.pack(expand=True, fill=BOTH)
+        result_output.pack(expand=True, fill=BOTH)
+        copy_button.pack(pady=2)
+
+    def generate_op_num(self):
+        num = numpy.random.randint(0, 10000, numpy.random.randint(1, 5)).tolist()
+        int_num = [int(i) for i in num]
+        self.number_input.insert('1.0', int_num)
 
 
 if __name__ == '__main__':
