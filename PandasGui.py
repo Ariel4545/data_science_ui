@@ -1,12 +1,13 @@
 from customtkinter import *
 import tkinter
-from tkinter import filedialog, messagebox, ttk
-import pandas, numpy
+from tkinter import filedialog, messagebox, ttk, simpledialog
+import pandas, numpy, pyperclip, datetime
+import matplotlib.pyplot as plt
 
 
 class Window(CTk):
     width = 340
-    height = 430
+    height = 500
     b_height = 3
     b_width = 6
     def __init__(self):
@@ -26,6 +27,19 @@ class Window(CTk):
         self.desc_ = CTkButton(self.buttons_frame, text='Describe ', command=self.describe, state=DISABLED, height=self.b_height, width=self.b_width)
         self.delete_ = CTkButton(self.buttons_frame, text='Drop ', command=self.delete, state=DISABLED, height=self.b_height, width=self.b_width)
         self.replace_ = CTkButton(self.buttons_frame, text='Replace ', command=self.replace, state=DISABLED, height=self.b_height, width=self.b_width)
+        self.abs_ = CTkButton(self.buttons_frame, text='Abs ', command=self.abs, state=DISABLED,
+                                  height=self.b_height, width=self.b_width)
+        self.pow_ = CTkButton(self.buttons_frame, text='Pow ', command=self.pow, state=DISABLED,
+                                  height=self.b_height, width=self.b_width)
+        self.mode_ = CTkButton(self.buttons_frame, text='Mode ', command=self.mode, state=DISABLED,
+                                  height=self.b_height, width=self.b_width)
+        # count , sum, mean, median, min max
+        self.count_ = CTkButton(self.buttons_frame, text='Count', command=self.count, state=DISABLED, height=self.b_height, width=self.b_width)
+        self.sum_ = CTkButton(self.buttons_frame, text='Sum', command=self.sum, state=DISABLED, height=self.b_height, width=self.b_width)
+        self.mean_ = CTkButton(self.buttons_frame, text='Mean', command=self.mean, state=DISABLED, height=self.b_height, width=self.b_width)
+        self.median_ = CTkButton(self.buttons_frame, text='Median', command=self.median, state=DISABLED, height=self.b_height, width=self.b_width)
+        self.min_ = CTkButton(self.buttons_frame, text='Min', command=self.min, state=DISABLED, height=self.b_height, width=self.b_width)
+        self.max_ = CTkButton(self.buttons_frame, text='Max', command=self.max, state=DISABLED, height=self.b_height, width=self.b_width)
         self.buttons_frame.pack(side=tkinter.BOTTOM)
         self.open_file.grid(row=6, column=0, padx=3)
         self.save_file.grid(row=6, column=1)
@@ -35,6 +49,15 @@ class Window(CTk):
         self.desc_.grid(row=4, column=0)
         self.delete_.grid(row=4, column=1)
         self.replace_.grid(row=4, column=2)
+        self.count_.grid(row=3, column=0)
+        self.sum_.grid(row=3, column=1)
+        self.mean_.grid(row=3, column=2)
+        self.median_.grid(row=2, column=0)
+        self.min_.grid(row=2, column=1)
+        self.max_.grid(row=2, column=2)
+        self.abs_.grid(row=1, column=0)
+        self.pow_.grid(row=1, column=1)
+        self.mode_.grid(row=1, column=2)
 
         pandas.options.display.max_rows = 9999
 
@@ -62,18 +85,20 @@ class Window(CTk):
             except FileNotFoundError:
                 tkinter.messagebox.showerror('file could not be found!')
 
-
+            self.content.plot()
+            plt.show()
             self.update_data()
 
             # self.data.configure(state=DISABLED)
 
-            self.save_file.configure(state=ACTIVE)
-            self.clean_m.configure(state=ACTIVE)
-            self.clean_d.configure(state=ACTIVE)
-            self.info_.configure(state=ACTIVE)
-            self.desc_.configure(state=ACTIVE)
-            self.delete_.configure(state=ACTIVE)
-            self.replace_.configure(state=ACTIVE)
+            self.save_file.configure(state=ACTIVE), self.clean_m.configure(state=ACTIVE)
+            self.clean_d.configure(state=ACTIVE), self.info_.configure(state=ACTIVE)
+            self.desc_.configure(state=ACTIVE), self.delete_.configure(state=ACTIVE)
+            self.replace_.configure(state=ACTIVE), self.count_.configure(state=ACTIVE)
+            self.sum_.configure(state=ACTIVE), self.mean_.configure(state=ACTIVE)
+            self.median_.configure(state=ACTIVE), self.min_.configure(state=ACTIVE)
+            self.max_.configure(state=ACTIVE), self.abs_.configure(state=ACTIVE), self.pow_.configure(state=ACTIVE)
+            self.mode_.configure(state=ACTIVE)
 
     def save(self):
         if not (messagebox.askyesno('PandasGui', 'Would you like to replace the old data frame?')):
@@ -185,6 +210,60 @@ class Window(CTk):
         self.old_value.grid(row=1, column=0)
         self.new_value.grid(row=1, column=2)
         enter_button.grid(row=2, column=1)
+
+    # aggression - 24/12 upd
+    def count(self):
+        count_info = self.content.count()
+        self.information_pop_msg(count_info, 'count')
+
+    def sum(self):
+        sum_info = self.content.sum()
+        self.information_pop_msg(sum_info, 'sum')
+
+    def min(self):
+        min_info = self.content.min()
+        self.information_pop_msg(min_info, 'min')
+
+    def max(self):
+        max_info = self.content.max()
+        self.information_pop_msg(max_info, 'max')
+
+    def mean(self):
+        mean_info = self.content.mean()
+        self.information_pop_msg(mean_info, 'mean')
+
+    def median(self):
+        median_info = self.content.median()
+        self.information_pop_msg(median_info, 'median')
+
+    def abs(self):
+        try:
+            abs_info = self.content.astype(int).abs()
+            self.information_pop_msg(abs_info, 'abs')
+        except:
+            messagebox.showerror('error', 'enable to convert data frame to integer')
+
+    def pow(self):
+        try:
+            pow_num = tkinter.simpledialog.askinteger('pow', 'please enter the amount of pow')
+            pow_info = self.content.pow(pow_num)
+            self.information_pop_msg(pow_info, 'pow')
+        except:
+            messagebox.showerror('error', 'enable to convert data frame to integer')
+
+    def mode(self):
+        mode_info = self.content.mode()
+        self.information_pop_msg(mode_info, 'mode')
+
+    def information_pop_msg(self, result, operation_name):
+        result_root = tkinter.Toplevel()
+        time = datetime.datetime.now().strftime('%H:%M:%S')
+        result_root.title(f'{operation_name} - {time}')
+        result_output = CTkLabel(result_root, text=f'{result}', fg_color='black')
+        copy_button = CTkButton(result_root, text='Copy', command=lambda: pyperclip.copy(str(result)), width=10)
+        result_output.pack()
+        copy_button.pack()
+    # end of update
 
     def on_close(self):
         self.destroy()
