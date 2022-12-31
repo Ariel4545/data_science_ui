@@ -1,5 +1,8 @@
 import tkinter
+
+import customtkinter
 import pyperclip
+import scipy.special
 from customtkinter import *
 import numpy
 from scipy import constants
@@ -20,11 +23,11 @@ class Window(CTk):
         self.snumber_input = tkinter.Text(self, width=90, height=10, wrap=WORD)
         self.snumber_input.pack(fill=BOTH, expand=True)
         # menus
-        menu = tkinter.Menu(self)
-        self.config(menu=menu)
+        self.menu = tkinter.Menu(self)
+        self.config(menu=self.menu)
 
-        arithmetic_menu = tkinter.Menu(menu, tearoff=False)
-        menu.add_cascade(label='arithmetic', menu=arithmetic_menu, state=ACTIVE)
+        arithmetic_menu = tkinter.Menu(self.menu, tearoff=False)
+        self.menu.add_cascade(label='arithmetic', menu=arithmetic_menu, state=ACTIVE)
         arithmetic_menu.add_command(label='Addition', command=lambda: self.arithmetics('Addition'))
         arithmetic_menu.add_command(label='Subtraction', command=lambda: self.arithmetics('Subtraction'))
         arithmetic_menu.add_command(label='Multiplication', command=lambda: self.arithmetics('Multiplication'))
@@ -35,9 +38,10 @@ class Window(CTk):
         arithmetic_menu.add_command(label='square root', command=lambda: self.arithmetics('square root'))
         arithmetic_menu.add_command(label='Remainder', command=lambda: self.arithmetics('Remainder'))
         arithmetic_menu.add_command(label='Absolute', command=lambda: self.arithmetics('Absolute'))
+        arithmetic_menu.add_command(label='Factorial', command=lambda: self.arithmetics('Factorial'))
 
-        rounding_menu = tkinter.Menu(menu, tearoff=False)
-        menu.add_cascade(label='Rounding', menu=rounding_menu)
+        rounding_menu = tkinter.Menu(self.menu, tearoff=False)
+        self.menu.add_cascade(label='Rounding', menu=rounding_menu)
         rounding_menu.add_command(label='Truncation', command=lambda: self.round('Truncation'))
         rounding_menu.add_command(label='Rounding', command=lambda: self.round('Rounding'))
         rounding_menu.add_command(label='Floor', command=lambda: self.round('Floor'))
@@ -45,8 +49,8 @@ class Window(CTk):
         rounding_menu.add_command(label='Fix', command=lambda: self.round('fix'))
         rounding_menu.add_command(label='Rint', command=lambda: self.round('rint'))
 
-        trigonometry_menu = tkinter.Menu(menu, tearoff=False)
-        menu.add_cascade(label='Trigonometry', menu=trigonometry_menu)
+        trigonometry_menu = tkinter.Menu(self.menu, tearoff=False)
+        self.menu.add_cascade(label='Trig.', menu=trigonometry_menu)
         trigonometry_menu.add_command(label='Sin', command=lambda: self.trigonometry('Sin'))
         trigonometry_menu.add_command(label='Cos', command=lambda: self.trigonometry('Cos'))
         trigonometry_menu.add_command(label='Tan', command=lambda: self.trigonometry('Tan'))
@@ -60,8 +64,8 @@ class Window(CTk):
         trigonometry_menu.add_command(label='angles via cosh', command=lambda: self.trigonometry('arccosh'))
         trigonometry_menu.add_command(label='angles via tanh', command=lambda: self.trigonometry('arctanh'))
 
-        statistics_menu = tkinter.Menu(menu, tearoff=False)
-        menu.add_cascade(label='Statistics', menu=statistics_menu)
+        statistics_menu = tkinter.Menu(self.menu, tearoff=False)
+        self.menu.add_cascade(label='Statistics', menu=statistics_menu)
         statistics_menu.add_command(label='Median', command=lambda: self.statistics('Median'))
         statistics_menu.add_command(label='Average', command=lambda: self.statistics('Average'))
         statistics_menu.add_command(label='Mean', command=lambda: self.statistics('Mean'))
@@ -69,18 +73,18 @@ class Window(CTk):
         statistics_menu.add_command(label='Max', command=lambda: self.statistics('Max'))
         statistics_menu.add_command(label='Std', command=lambda: self.statistics('Std'))
         statistics_menu.add_command(label='Ptp', command=lambda: self.statistics('Ptp'))
+        statistics_menu.add_command(label='Mode', command=lambda: self.statistics('Mode'))
 
-        random_menu = tkinter.Menu(menu, tearoff=False)
-        menu.add_cascade(label='Random', menu=random_menu)
+        random_menu = tkinter.Menu(self.menu, tearoff=False)
+        self.menu.add_cascade(label='Random', menu=random_menu)
         random_menu.add_command(label='Choice', command=lambda: self.random('Choice'))
         random_menu.add_command(label='Generate unit interval', command=lambda: self.random('Generate unit interval'))
         random_menu.add_command(label='Randint', command=lambda: self.random('Randint'))
         random_menu.add_command(label='Sample', command=lambda: self.random('sample'))
         random_menu.add_command(label='permutation', command=lambda: self.random('permutation'))
 
-
-        data_menu = tkinter.Menu(menu, tearoff=False)
-        menu.add_cascade(label='Data operations', menu=data_menu)
+        data_menu = tkinter.Menu(self.menu, tearoff=False)
+        self.menu.add_cascade(label='Others', menu=data_menu)
         data_menu.add_command(label='Filter by sizes', command=lambda: self.data_operations(mode='size'))
         data_menu.add_command(label='Filter by parity', command=lambda: self.data_operations(mode='parity'))
         data_menu.add_command(label='Sort', command=lambda: self.data_operations(mode='sort'))
@@ -91,32 +95,50 @@ class Window(CTk):
         data_menu.add_command(label='LCM', command=lambda: self.data_operations(mode='LCM'))
         data_menu.add_command(label='GCD', command=lambda: self.data_operations(mode='GCD'))
         data_menu.add_command(label='Unique', command=lambda: self.data_operations(mode='Unique'))
+        data_menu.add_separator()
+        data_menu.add_command(label='Percentage of', command=lambda: self.data_operations(mode='p.of'))
+        data_menu.add_command(label='Percentage difference', command=lambda: self.data_operations(mode='p.difference'))
+        data_menu.add_command(label='Percentage increase', command=lambda: self.data_operations(mode='p.increase'))
 
-        ns_menu = tkinter.Menu(menu, tearoff=False)
-        menu.add_cascade(label='Number systems', menu=ns_menu)
+        ns_menu = tkinter.Menu(self.menu, tearoff=False)
+        self.menu.add_cascade(label='Number systems', menu=ns_menu)
         ns_menu.add_command(label='Binary', command=lambda: self.number_system(mode='Binary'))
         ns_menu.add_command(label='Octal', command=lambda: self.number_system(mode='Octal'))
         ns_menu.add_command(label='Hexadecimal', command=lambda: self.number_system(mode='Hexadecimal'))
 
-        exp_menu = tkinter.Menu(menu, tearoff=False)
-        menu.add_cascade(label='Exponents', menu=exp_menu)
+        exp_menu = tkinter.Menu(self.menu, tearoff=False)
+        self.menu.add_cascade(label='Exponents', menu=exp_menu)
         exp_menu.add_command(label='Exp', command=lambda: self.ex('exp'))
         exp_menu.add_command(label='Exp -1', command=lambda: self.ex('exp-1'))
         exp_menu.add_command(label='Exp 2', command=lambda: self.ex('exp2'))
+        exp_menu.add_command(label='Exp 10', command=lambda: self.ex('exp10'))
         exp_menu.add_command(label='Log 10', command=lambda: self.ex('log'))
         exp_menu.add_command(label='Log 2', command=lambda: self.ex('log2'))
 
-        const_menu = tkinter.Menu(menu, tearoff=False)
-        menu.add_cascade(label='Constant', menu=const_menu)
+        const_menu = tkinter.Menu(self.menu, tearoff=False)
+        self.menu.add_cascade(label='Const.', menu=const_menu)
         const_menu.add_command(label='Pi', command=lambda: self.const(numpy.pi))
         const_menu.add_command(label='E', command=lambda: self.const(numpy.e))
+        const_menu.add_command(label='R', command=lambda: self.const(constants.R))
         const_menu.add_command(label='Golden ratio', command=lambda: self.const(constants.golden))
         const_menu.add_command(label='Speed of light', command=lambda: self.const(constants.speed_of_light))
         const_menu.add_command(label='E0', command=lambda: self.const(constants.epsilon_0))
         const_menu.add_command(label='MU0', command=lambda: self.const(constants.golden))
         const_menu.add_command(label='G', command=lambda: self.const(constants.G))
 
+        calc_menu = tkinter.Menu(self.menu, tearoff=False)
+        self.menu.add_cascade(label='Calculus', menu=calc_menu)
+        calc_menu.add_cascade(label='Integrate', command=lambda: self.calculus(scipy.integrate))
+        calc_menu.add_cascade(label='Integration sum', command=lambda: self.calculus(numpy.cumsum))
+        # calc_menu.add_cascade(label='Integration formula', command=lambda: self.calc(numpy.integrate))
+        calc_menu.add_cascade(label='Line space', command=lambda: self.calculus(numpy.linspace))
+
+        self.menu.add_cascade(label='Night mode', command=self.themes)
+
         self.generate_op_num()
+        self.dark = True
+        self.menu_list = [arithmetic_menu, rounding_menu, trigonometry_menu, statistics_menu, random_menu, data_menu
+            , ns_menu, exp_menu, const_menu, calc_menu]
 
     def turn_into_array(self):
         self.content = (self.number_input.get('1.0', 'end'))
@@ -159,6 +181,8 @@ class Window(CTk):
             result = numpy.sqrt(self.array)
         elif mode == 'square':
             result = numpy.square(self.array)
+        elif mode == 'Factorial':
+            result = numpy.math.factorial(self.array)
         if self.array:
             self.result_page(result)
 
@@ -222,6 +246,8 @@ class Window(CTk):
             result = numpy.std(self.array)
         elif mode == 'Ptp':
             result = numpy.ptp(self.array)
+        elif mode == 'Mode':
+            result = numpy.mod(self.array)
         if self.array:
             self.result_page(result)
 
@@ -344,6 +370,13 @@ class Window(CTk):
         elif mode == 'Unique':
             self.result_page(numpy.unique(self.array))
 
+        elif mode == 'p.of':
+            self.result_page((self.array / self.sarray) * 100)
+        elif mode == 'p.difference':
+            self.result_page((abs(self.array - self.sarray) / self.sarray) * 100)
+        elif mode == 'p.increase':
+            self.result_page(((self.array - self.sarray) / self.sarray) * 100)
+
     def number_system(self, mode):
         self.turn_into_array()
         result = []
@@ -365,6 +398,8 @@ class Window(CTk):
             result = numpy.expm1(self.array)
         elif mode == 'exp2':
             result = numpy.exp2(self.array)
+        elif mode == 'exp10':
+            result = scipy.special.exp10(self.array)
         elif mode == 'log':
             result = numpy.log10(self.array)
         elif mode == 'log2':
@@ -391,6 +426,34 @@ class Window(CTk):
         num = numpy.random.randint(0, 10000, numpy.random.randint(1, 5)).tolist()
         int_num = [int(i) for i in num]
         self.number_input.insert('1.0', int_num)
+
+    def themes(self):
+        if self.dark:
+            customtkinter.set_appearance_mode('dark')
+            self.number_input.configure(background='#252423', foreground='green')
+            self.snumber_input.configure(background='#252423', foreground='green')
+            self.menu.configure(background='#27211a', foreground='green')
+            for menu_ in self.menu_list:
+                menu_.configure(background='#27211a', foreground='green')
+            self.menu.delete('Night mode')
+            self.menu.add_cascade(label='Night mode ✓', command=self.themes)
+            self.dark = False
+        else:
+            customtkinter.set_appearance_mode('light')
+            self.number_input.configure(background='SystemButtonFace', foreground='black')
+            self.snumber_input.configure(background='SystemButtonFace', foreground='black')
+            self.menu.configure(background='SystemButtonFace', foreground='black')
+            for menu_ in self.menu_list:
+                menu_.configure(background='SystemButtonFace', foreground='black')
+            self.menu.delete('Night mode ✓')
+            self.menu.add_cascade(label='Night mode', command=self.themes)
+            self.dark = True
+
+    def calculus(self, command):
+        self.turn_into_array()
+        result = command(self.array)
+        if result:
+            self.result_page(result)
 
 
 if __name__ == '__main__':
