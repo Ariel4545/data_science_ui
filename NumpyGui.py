@@ -16,11 +16,13 @@ class Window(CTk):
         super().__init__()
         # window
         self.geometry(f'{self.width}x{self.height}')
-        self.title('Gui for numpy')
+        self.title('Egon - Gui for numpy')
+        customtkinter.set_appearance_mode('light')
+        self.after(201, lambda: self.iconbitmap('NumpyGui logo.png'))
         # text boxes
-        self.number_input = tkinter.Text(self, width=90, height=20, wrap=WORD)
+        self.number_input = tkinter.Text(self, width=90, height=20, wrap=WORD, undo=True)
         self.number_input.pack(fill=BOTH, expand=True)
-        self.snumber_input = tkinter.Text(self, width=90, height=10, wrap=WORD)
+        self.snumber_input = tkinter.Text(self, width=90, height=10, wrap=WORD, undo=True)
         self.snumber_input.pack(fill=BOTH, expand=True)
         # menus
         self.menu = tkinter.Menu(self)
@@ -183,7 +185,7 @@ class Window(CTk):
             result = numpy.square(self.array)
         elif mode == 'Factorial':
             result = numpy.math.factorial(self.array)
-        if self.array:
+        if self.array.all():
             self.result_page(result)
 
     def round(self, mode):
@@ -200,7 +202,7 @@ class Window(CTk):
             result = numpy.rint(self.array)
         elif mode == 'fix':
             result = numpy.fix(self.array)
-        if self.array:
+        if self.array.all():
             self.result_page(result)
 
     def trigonometry(self, mode):
@@ -227,7 +229,7 @@ class Window(CTk):
             result = numpy.arccosh(self.array)
         elif mode == 'arctanh':
             result = numpy.arctanh(self.array)
-        if self.array:
+        if self.array.all():
             self.result_page(result)
 
     def statistics(self, mode):
@@ -248,7 +250,7 @@ class Window(CTk):
             result = numpy.ptp(self.array)
         elif mode == 'Mode':
             result = numpy.mod(self.array)
-        if self.array:
+        if self.array.all():
             self.result_page(result)
 
     def random(self, mode):
@@ -264,7 +266,8 @@ class Window(CTk):
         elif mode == 'permutation':
             result = numpy.random.permutation(self.array)
 
-        self.result_page(result)
+        if result.all():
+            self.result_page(result)
 
     def data_operations(self, mode):
         self.turn_into_array()
@@ -291,8 +294,8 @@ class Window(CTk):
                         else:
                             filter_array.append(False)
                 result = self.array[filter_array]
-                print(self.array, filter_array)
-                self.result_page(result)
+                if result.all():
+                    self.result_page(result)
                 size_root.destroy()
 
             self.size_con_value = '>'
@@ -328,7 +331,8 @@ class Window(CTk):
                         else:
                             filter_array.append(False)
                 result = self.array[filter_array]
-                self.result_page(result)
+                if result.all():
+                    self.result_page(result)
 
             parity_root = CTkToplevel()
             self.parity_con_value = 'even'
@@ -342,13 +346,15 @@ class Window(CTk):
 
         elif mode == 'sort':
             result = numpy.sort(self.array)
-            self.result_page(result)
+            if result.all():
+                self.result_page(result)
 
         elif mode == 'search':
             def enter():
                 searched_value = int(search_input.get())
                 result = numpy.where(self.array == searched_value)[0]
-                self.result_page(result)
+                if result.all():
+                    self.result_page(result)
 
             search_root = CTkToplevel()
             search_root.title('search')
@@ -387,7 +393,7 @@ class Window(CTk):
                 result.append(hex(i))
             elif mode == 'Octal':
                 result.append(oct(i))
-            if result:
+            if result.all():
                 self.result_page(result)
 
     def ex(self, mode):
@@ -405,7 +411,7 @@ class Window(CTk):
         elif mode == 'log2':
             result = numpy.log2(self.array)
 
-        if result:
+        if result.all():
             self.result_page(result)
 
     def const(self, val):
@@ -413,18 +419,65 @@ class Window(CTk):
         self.number_input.insert(pos, val)
 
     def result_page(self, result):
+
+        def copy_res(res):
+            if res == 'array':
+                custom_res = str(result)
+            else:
+                result_list = (result.tolist())
+                custom_res = ''
+                for r in result_list:
+                    custom_res += str(r)
+                    if not(r == result_list[-1]):
+                        custom_res += ' '
+
+            if custom_res:
+                pyperclip.copy(custom_res)
+
+        def topmost():
+            result_root.attributes('-topmost', self.tp.get())
+
+        self.tp = BooleanVar()
+        self.tp.set(True)
         result_root = tkinter.Toplevel()
-        result_root.title('Result:')
+        result_root.title('Numpy')
         frame = CTkFrame(result_root)
-        result_output = CTkLabel(frame, text=f'{result}', fg_color='black')
-        copy_button = CTkButton(frame, text='Copy', command=lambda: pyperclip.copy(str(result)), width=10)
+        title = CTkLabel(frame, text=f'Your result is:', font=('arial', 12, 'underline'))
+        result_output = CTkLabel(frame, text=f'{result}')
+        option_title = CTkLabel(frame, text='Options:', font=('arial', 12, 'underline'))
+        topmost_checkbutton = CTkCheckBox(frame, text='TopMost', variable=self.tp, command=topmost)
+        copy_b_array = CTkButton(frame, text='Copy array', command=lambda: copy_res('array'), width=10)
+        copy_b_num = CTkButton(frame, text='Copy numbers', command=lambda: copy_res('numbers'), width=10)
         frame.pack(expand=True, fill=BOTH)
+        title.pack(pady=2)
         result_output.pack(expand=True, fill=BOTH)
-        copy_button.pack(pady=2)
+        option_title.pack(pady=2)
+        topmost_checkbutton.pack(pady=2)
+        copy_b_array.pack(pady=2)
+        copy_b_num.pack(pady=2)
+
+        result_root.update()
+        win_w, win_h = result_root.winfo_width() + 100, result_root.winfo_height()
+        enum_x, enum_y = (self.winfo_x()), (self.winfo_y())
+        enum_w, enum_h = self.winfo_width(), self.winfo_height()
+        mid_x, mid_y = (round(enum_x + (enum_w / 2) - (win_w / 2))), (round(enum_y + (enum_h / 2) - (win_h / 2)))
+        if abs(mid_y - self.winfo_screenheight()) <= 80:
+            mid_y = (self.winfo_screenheight() // 2)
+            print(mid_y)
+        result_root.geometry(f'{win_w}x{win_h}+{mid_x}+{mid_y}')
 
     def generate_op_num(self):
-        num = numpy.random.randint(0, 10000, numpy.random.randint(1, 5)).tolist()
-        int_num = [int(i) for i in num]
+        num = numpy.random.randint(0, 1000, numpy.random.randint(1, 5)).tolist()
+        if len(num) % 2 == 0:
+            num1 = num[:len(num)//2]
+            num2 = num[len(num)//2:]
+            int_num2 = [int(i) for i in num2]
+            self.snumber_input.insert('1.0', int_num2)
+        else:
+            num1 = num
+
+        int_num = [int(i) for i in num1]
+
         self.number_input.insert('1.0', int_num)
 
     def themes(self):
@@ -452,7 +505,7 @@ class Window(CTk):
     def calculus(self, command):
         self.turn_into_array()
         result = command(self.array)
-        if result:
+        if result.all():
             self.result_page(result)
 
 
