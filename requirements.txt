@@ -1,0 +1,6 @@
+pandas
+numpy
+customtkinter
+scipy
+matplotlib
+pyperclip
