@@ -26,6 +26,7 @@ add fun numbers settings + made to all main things
 countorf input filter +/ explanation
 '''
 
+
 def get_transparency(class_='imshow'):
     if class_ == 'imshow':
         trans_widget = im_transparency
@@ -33,6 +34,7 @@ def get_transparency(class_='imshow'):
         trans_widget = sc_transparency
     trans_v = (trans_widget.get() / 100)
     return trans_v
+
 
 def change_marker(marker, class_='stem'):
     if marker:
@@ -43,11 +45,13 @@ def change_marker(marker, class_='stem'):
         else:
             return 'o'
 
+
 def get_legend(chosen_legend=False):
-    if not(chosen_legend):
+    if not (chosen_legend):
         return ''
     else:
         return chosen_legend
+
 
 def change_line(line):
     if line:
@@ -55,17 +59,50 @@ def change_line(line):
     else:
         return '-'
 
+
 # global functions for common things
-def upload(entry):
+def ask_for_file(entries):
     file_name = filedialog.askopenfilename(title='Open file', filetypes=(('All', '*.*'), ('CSV', 'csv.*')))
     if file_name:
-        entry.delete(0, END)
-        stuff = pandas.read_csv(file_name)
+        file_data = pandas.read_csv(file_name)
+        ask_for_columns(file_data, entries)
 
-        p = 0
-        for val in stuff:
-            entry.insert(p, val)
-            p += len(val)
+
+def ask_for_columns(file_data, entries):
+    if file_data is None:
+        return
+
+    column_window = customtkinter.CTkToplevel()
+    column_window.title('Choose Columns')
+    column_window.geometry('400x300')
+
+    label = customtkinter.CTkLabel(column_window, text='Select columns to use:')
+    label.pack(pady=10)
+
+    listbox = tkinter.Listbox(column_window, selectmode=tkinter.MULTIPLE)
+    for col in file_data.columns:
+        listbox.insert(tkinter.END, col)
+    listbox.pack(pady=10, padx=10, fill='both', expand=True)
+
+    def on_submit():
+        selected_indices = listbox.curselection()
+        if not selected_indices:
+            messagebox.showwarning('No Columns Selected', 'Please select at least one column.')
+            return
+
+        selected_columns = [file_data.columns[i] for i in selected_indices]
+
+        for i, entry in enumerate(entries):
+            if i < len(selected_columns):
+                column_data = file_data[selected_columns[i]].to_string(index=False).replace('\n', ' ')
+                entry.delete(0, END)
+                entry.insert(0, column_data)
+
+        column_window.destroy()
+
+    submit_button = customtkinter.CTkButton(column_window, text='Submit', command=on_submit)
+    submit_button.pack(pady=10)
+
 
 def place_w_middle(window):
     win_w = window.winfo_screenwidth()
@@ -74,6 +111,7 @@ def place_w_middle(window):
     placement_x = round((win_w / 2) - (width / 2))
     placement_y = round((win_h / 2) - (height / 2))
     window.geometry(f'{width}x{height}+{placement_x}+{placement_y}')
+
 
 def open_app(application):
     app = application()
@@ -107,15 +145,17 @@ class MainMenu(customtkinter.CTk):
         tabview.set('Apps')
 
         a_title = customtkinter.CTkLabel(app_frame, text='Applications:',
-                                       font=main_title)
-        self.open_graphMaker = customtkinter.CTkButton(app_frame, text='Graph maker', command=lambda: open_app(GraphMaker), text_color=button_fg)
+                                         font=main_title)
+        self.open_graphMaker = customtkinter.CTkButton(app_frame, text='Graph maker',
+                                                       command=lambda: open_app(GraphMaker), text_color=button_fg)
         self.open_histogramMaker = customtkinter.CTkButton(app_frame, text='Histogram maker', command=lambda: open_app(
             HistogramMaker))
         self.open_barMaker = customtkinter.CTkButton(app_frame, text='Bar maker', command=lambda: open_app(BarMaker))
         self.open_pieMaker = customtkinter.CTkButton(app_frame, text='Pie maker', command=lambda: open_app(PieMaker))
         self.open_stemMaker = customtkinter.CTkButton(app_frame, text='Stem maker', command=lambda: open_app(StemMaker))
-        self.open_scatterPlotMaker = customtkinter.CTkButton(app_frame, text='Scatter plot maker', command=lambda: open_app(
-            ScatterPlotMaker))
+        self.open_scatterPlotMaker = customtkinter.CTkButton(app_frame, text='Scatter plot maker',
+                                                             command=lambda: open_app(
+                                                                 ScatterPlotMaker))
         self.open_imShowBarMaker = customtkinter.CTkButton(app_frame, text='ImShow maker', command=lambda: open_app(
             ImShowMaker))
         self.open_contourMaker = customtkinter.CTkButton(app_frame, text='Contour maker', command=lambda: open_app(
@@ -146,21 +186,23 @@ class MainMenu(customtkinter.CTk):
                                                  values=self.themes, command=self.change_theme)
         font_title = customtkinter.CTkLabel(settings_frame, text='font sizes:', font=sub_title)
         font_size_box = customtkinter.CTkComboBox(settings_frame, state='readonly', variable=self.fonts_v,
-                                                 values=font_sizes, command=self.font_sizes)
+                                                  values=font_sizes, command=self.font_sizes)
         button_colors_title = customtkinter.CTkLabel(settings_frame, text='Button colors:', font=sub_title)
         fg_button = customtkinter.CTkButton(settings_frame, text='Button foreground', command=None, state=DISABLED)
         bg_button = customtkinter.CTkButton(settings_frame, text='Button background', command=None, state=DISABLED)
         check_marks_title = customtkinter.CTkLabel(settings_frame, text='Others:', font=sub_title)
         topmost_check = customtkinter.CTkCheckBox(settings_frame, text='TopMost', variable=self.topmost_v, command=
-                                                  self.change_tp)
+        self.change_tp)
         middle_check = customtkinter.CTkCheckBox(settings_frame, text='Open in the middle', variable=self.middle_v,
                                                  command=self.middle_v_set)
-        limit_sizes_check = customtkinter.CTkCheckBox(settings_frame, text='Limit window sizes', variable=self.limit_sizes_v
-                                                           , command=self.resize_op)
+        limit_sizes_check = customtkinter.CTkCheckBox(settings_frame, text='Limit window sizes',
+                                                      variable=self.limit_sizes_v
+                                                      , command=self.resize_op)
         fun_numbers_check = customtkinter.CTkCheckBox(settings_frame, text='Fun numbers', variable=self.fun_numbers_v,
                                                       command=self.fun_v_set)
         transparency_title = customtkinter.CTkLabel(settings_frame, text='Transparency:', font=sub_title)
-        self.trans_progress = customtkinter.CTkSlider(settings_frame, from_=25, to=100, variable=self.tr_v, command=self.change_tr)
+        self.trans_progress = customtkinter.CTkSlider(settings_frame, from_=25, to=100, variable=self.tr_v,
+                                                      command=self.change_tr)
         self.trans_progress.set(100)
         placeholder = customtkinter.CTkLabel(settings_frame, text='')
 
@@ -217,9 +259,9 @@ class MainMenu(customtkinter.CTk):
 
     def resize_op(self, initial=False):
         global resize_v
-        if not(initial):
-            resize_v = not(self.limit_sizes_v.get())
-        if not(resize_v):
+        if not (initial):
+            resize_v = not (self.limit_sizes_v.get())
+        if not (resize_v):
             self.minsize(275, 100)
             self.maxsize(275, self.HEIGHT)
             if initial:
@@ -227,7 +269,6 @@ class MainMenu(customtkinter.CTk):
         else:
             self.minsize(0, 0)
             self.maxsize(self.winfo_screenwidth(), self.winfo_screenheight())
-
 
     def font_sizes(self, event):
         global main_title, sub_title, med_bold_title
@@ -268,22 +309,41 @@ class MainMenu(customtkinter.CTk):
 
     def open_random(self):
         classes_list = [GraphMaker, HistogramMaker, BarMaker, PieMaker, StemMaker, ScatterPlotMaker, ImShowMaker,
-        ContourfMaker, ErrorBarMaker, BoxPlot]
+                        ContourfMaker, ErrorBarMaker, BoxPlot]
 
         cls = ran_choice(classes_list)
         open_app(cls)
 
 
-class BoxPlot(customtkinter.CTk):
-    global opened_programs
+class BasePlotMaker(customtkinter.CTk):
+    def __init__(self, title):
+        super().__init__()
+        self.title(title)
+        if not resize_v:
+            self.resizable(False, False)
 
+        self.protocol('WM_DELETE_WINDOW', self.close_this)
+        opened_programs.append(self)
+
+    def finalize_setup(self):
+        if middle_v:
+            self.update()
+            place_w_middle(self)
+        if fun_numbers_v:
+            self._setup_fun_numbers()
+
+    def _setup_fun_numbers(self):
+        pass
+
+    def close_this(self):
+        opened_programs.remove(self)
+        self.destroy()
+
+
+class BoxPlot(BasePlotMaker):
 
     def __init__(self):
-        super().__init__()
-        global opened_programs
-        self.title('Egon Box plot')
-        if not(resize_v):
-            self.resizable(False, False)
+        super().__init__('Egon Box plot')
         self.pa_var = IntVar()
         self.notch_var = IntVar()
         self.line_var = customtkinter.StringVar()
@@ -291,67 +351,81 @@ class BoxPlot(customtkinter.CTk):
         default_line_var = ran_choice(ls_values)
         self.line_var.set(default_line_var)
 
-        title = customtkinter.CTkLabel(self, text='Graphical user interface for BoxPlots',
-                                       font=main_title)
-        data_title = customtkinter.CTkLabel(self, text='data values:', font=sub_title)
-        self.data_entry1 = customtkinter.CTkEntry(self)
-        self.data_entry2 = customtkinter.CTkEntry(self)
-        self.data_entry3 = customtkinter.CTkEntry(self)
-        patchA_checkbox = customtkinter.CTkCheckBox(self, text='Patch artist', variable=self.pa_var)
-        notch_checkbox = customtkinter.CTkCheckBox(self, text='Notch', variable=self.notch_var)
-        lines_title = customtkinter.CTkLabel(self, text='Lines:', font=med_bold_title)
-        line_width_title = customtkinter.CTkLabel(self, text='line app_width:', font=sub_title)
-        line_style_title = customtkinter.CTkLabel(self, text='line style:', font=sub_title)
-        self.line_width = customtkinter.CTkEntry(self)
-        self.line_style = customtkinter.CTkComboBox(self, state='readonly', variable=self.line_var, values=ls_values)
-        names_title = customtkinter.CTkLabel(self, text='Names:', font=med_bold_title)
-        title_title = customtkinter.CTkLabel(self, text='main title:', font=sub_title)
-        x_val_title = customtkinter.CTkLabel(self, text='X-axis names:', font=sub_title)
-        self.title = customtkinter.CTkEntry(self)
-        x_values_names = customtkinter.CTkEntry(self, state=DISABLED)
+        title = customtkinter.CTkLabel(self, text='Graphical user interface for BoxPlots', font=main_title)
+        title.pack(pady=10)
+
+        tabview = customtkinter.CTkTabview(self)
+        tabview.pack(padx=5, pady=5, fill='both', expand=True)
+
+        data_tab = tabview.add('Data')
+        style_tab = tabview.add('Style')
+        names_tab = tabview.add('Names')
+
+        # --- Data Tab ---
+        data_tab.grid_columnconfigure(0, weight=1)
+        data_tab.grid_columnconfigure(1, weight=1)
+        data_tab.grid_columnconfigure(2, weight=1)
+        data_title = customtkinter.CTkLabel(data_tab, text='data values:', font=sub_title)
+        self.data_entry1 = customtkinter.CTkEntry(data_tab)
+        self.data_entry2 = customtkinter.CTkEntry(data_tab)
+        self.data_entry3 = customtkinter.CTkEntry(data_tab)
+        upload_button = customtkinter.CTkButton(data_tab, text='Upload Data', command=lambda: ask_for_file(
+            [self.data_entry1, self.data_entry2, self.data_entry3]))
+
+        data_title.grid(row=0, column=1, pady=5)
+        self.data_entry1.grid(row=1, column=0, padx=5, pady=2, sticky='ew')
+        self.data_entry2.grid(row=1, column=1, padx=5, pady=2, sticky='ew')
+        self.data_entry3.grid(row=1, column=2, padx=5, pady=2, sticky='ew')
+        upload_button.grid(row=2, column=1, pady=10)
+
+        # --- Style Tab ---
+        style_tab.grid_columnconfigure(0, weight=1)
+        style_tab.grid_columnconfigure(1, weight=1)
+        patchA_checkbox = customtkinter.CTkCheckBox(style_tab, text='Patch artist', variable=self.pa_var)
+        notch_checkbox = customtkinter.CTkCheckBox(style_tab, text='Notch', variable=self.notch_var)
+        lines_title = customtkinter.CTkLabel(style_tab, text='Lines:', font=med_bold_title)
+        line_width_title = customtkinter.CTkLabel(style_tab, text='line app_width:', font=sub_title)
+        line_style_title = customtkinter.CTkLabel(style_tab, text='line style:', font=sub_title)
+        self.line_width = customtkinter.CTkEntry(style_tab)
+        self.line_style = customtkinter.CTkComboBox(style_tab, state='readonly', variable=self.line_var,
+                                                    values=ls_values)
+
+        patchA_checkbox.grid(row=0, column=0, padx=5, pady=5)
+        notch_checkbox.grid(row=0, column=1, padx=5, pady=5)
+        lines_title.grid(row=1, column=0, columnspan=2, pady=5)
+        line_width_title.grid(row=2, column=0, padx=5, pady=2)
+        self.line_width.grid(row=3, column=0, padx=5, pady=2, sticky='ew')
+        line_style_title.grid(row=2, column=1, padx=5, pady=2)
+        self.line_style.grid(row=3, column=1, padx=5, pady=2, sticky='ew')
+
+        # --- Names Tab ---
+        names_tab.grid_columnconfigure(0, weight=1)
+        names_tab.grid_columnconfigure(1, weight=1)
+        names_title = customtkinter.CTkLabel(names_tab, text='Names:', font=med_bold_title)
+        title_title = customtkinter.CTkLabel(names_tab, text='main title:', font=sub_title)
+        x_val_title = customtkinter.CTkLabel(names_tab, text='X-axis names:', font=sub_title)
+        self.title_entry = customtkinter.CTkEntry(names_tab)
+        x_values_names = customtkinter.CTkEntry(names_tab, state=DISABLED)
+
+        names_title.grid(row=0, column=0, columnspan=2, pady=5)
+        title_title.grid(row=1, column=0, padx=5, pady=2)
+        self.title_entry.grid(row=2, column=0, padx=5, pady=2, sticky='ew')
+        x_val_title.grid(row=1, column=1, padx=5, pady=2)
+        x_values_names.grid(row=2, column=1, padx=5, pady=2, sticky='ew')
+
+        # --- Make Boxplot Button ---
         boxplot_button = customtkinter.CTkButton(self, text='Make box plot', command=self.make_boxplot)
+        boxplot_button.pack(pady=10)
 
-        title.grid(row=0, column=1)
-        data_title.grid(row=1, column=1)
-        self.data_entry1.grid(row=2, column=0, padx=5)
-        self.data_entry2.grid(row=2, column=1)
-        self.data_entry3.grid(row=2, column=2, padx=5)
-        patchA_checkbox.grid(row=3, column=0, pady=5)
-        notch_checkbox.grid(row=3, column=2, pady=5)
-        lines_title.grid(row=4, column=1)
-        line_style_title.grid(row=4, column=0, pady=5)
-        line_width_title.grid(row=4, column=2, pady=5)
-        self.line_style.grid(row=5, column=0, pady=5)
-        self.line_width.grid(row=5, column=2, pady=5)
-        names_title.grid(row=6, column=1)
-        title_title.grid(row=7, column=0, pady=5)
-        x_val_title.grid(row=7, column=2, pady=5)
-        self.title.grid(row=8, column=0, pady=5)
-        x_values_names.grid(row=8, column=2, pady=5)
-        boxplot_button.grid(row=10, column=1, pady=10)
+        self.finalize_setup()
 
-        # self.line_style['current'] = self.line_var.get()
-
-        if middle_v:
-            self.update()
-            place_w_middle(self)
-
-        if fun_numbers_v:
-            entry_1_r = f'{randint(0, 10)} {randint(0, 10)} {randint(0, 10)}'
-            entry_2_r = f'{randint(0, 10)} {randint(0, 10)} {randint(0, 10)}'
-            entry_3_r = f'{randint(0, 10)} {randint(0, 10)} {randint(0, 10)}'
-            self.data_entry1.insert(END, entry_1_r)
-            self.data_entry2.insert(END, entry_2_r)
-            self.data_entry3.insert(END, entry_3_r)
-
-
-        self.protocol('WM_DELETE_WINDOW', self.close_this)
-        self.boxplot_root = self
-        opened_programs.append(self.boxplot_root)
-
-    def close_this(self):
-        opened_programs.remove(self.boxplot_root)
-        self.destroy()
+    def _setup_fun_numbers(self):
+        entry_1_r = f'{randint(0, 10)} {randint(0, 10)} {randint(0, 10)}'
+        entry_2_r = f'{randint(0, 10)} {randint(0, 10)} {randint(0, 10)}'
+        entry_3_r = f'{randint(0, 10)} {randint(0, 10)} {randint(0, 10)}'
+        self.data_entry1.insert(END, entry_1_r)
+        self.data_entry2.insert(END, entry_2_r)
+        self.data_entry3.insert(END, entry_3_r)
 
     def make_boxplot(self):
         plt.clf()
@@ -359,8 +433,8 @@ class BoxPlot(customtkinter.CTk):
         # lines management
         for whisker in x['whiskers']:
             whisker.set(linewidth=self.line_w(), linestyle=change_line(self.line_style.get()))
-        if title_condition(self.title):
-            plt.title(title_condition(self.title))
+        if title_condition(self.title_entry):
+            plt.title(title_condition(self.title_entry))
         # if self.title_():
         #     pass
         plt.show()
@@ -389,68 +463,72 @@ class BoxPlot(customtkinter.CTk):
             return False
 
 
-class ErrorBarMaker(customtkinter.CTk):
+class ErrorBarMaker(BasePlotMaker):
 
     def __init__(self):
-        super().__init__()
-        self.title('Egon Error bar maker')
-        if not (resize_v):
-            self.resizable(False, False)
+        super().__init__('Egon Error bar maker')
         self.u_var = IntVar()
         self.l_var = IntVar()
 
-        title = customtkinter.CTkLabel(self, text='Graphical user interface for ErrorBars',
-                                       font=main_title)
-        x_title = customtkinter.CTkLabel(self, text='x values:',
-                                         font=sub_title)
-        y_title = customtkinter.CTkLabel(self, text='y values:',
-                                         font=sub_title)
-        self.x_entry = customtkinter.CTkEntry(self)
-        self.y_entry = customtkinter.CTkEntry(self)
-        xerr_title = customtkinter.CTkLabel(self, text='xerr value:',
-                                            font=sub_title)
-        yerr_title = customtkinter.CTkLabel(self, text='yerr value:',
-                                            font=sub_title)
-        self.xerr_entry = customtkinter.CTkEntry(self)
-        self.yerr_entry = customtkinter.CTkEntry(self)
-        upload_x = customtkinter.CTkButton(self, text='Upload', command=lambda: upload(self.x_entry))
-        upload_y = customtkinter.CTkButton(self, text='Upload', command=lambda: upload(self.y_entry))
-        uplims_checkbox = customtkinter.CTkCheckBox(self, text='upper limits', variable=self.u_var)
-        lolims_checkbox = customtkinter.CTkCheckBox(self, text='lower limits', variable=self.l_var)
+        title = customtkinter.CTkLabel(self, text='Graphical user interface for ErrorBars', font=main_title)
+        title.pack(pady=10)
+
+        tabview = customtkinter.CTkTabview(self)
+        tabview.pack(padx=5, pady=5, fill='both', expand=True)
+
+        data_tab = tabview.add('Data')
+        error_tab = tabview.add('Error Values')
+        options_tab = tabview.add('Options')
+
+        # --- Data Tab ---
+        data_tab.grid_columnconfigure(0, weight=1)
+        data_tab.grid_columnconfigure(1, weight=1)
+        x_title = customtkinter.CTkLabel(data_tab, text='x values:', font=sub_title)
+        y_title = customtkinter.CTkLabel(data_tab, text='y values:', font=sub_title)
+        self.x_entry = customtkinter.CTkEntry(data_tab)
+        self.y_entry = customtkinter.CTkEntry(data_tab)
+        upload_button = customtkinter.CTkButton(data_tab, text='Upload Data',
+                                                command=lambda: ask_for_file([self.x_entry, self.y_entry]))
+
+        x_title.grid(row=0, column=0, padx=5, pady=2, sticky='ew')
+        self.x_entry.grid(row=1, column=0, padx=5, pady=2, sticky='ew')
+        y_title.grid(row=0, column=1, padx=5, pady=2, sticky='ew')
+        self.y_entry.grid(row=1, column=1, padx=5, pady=2, sticky='ew')
+        upload_button.grid(row=2, column=0, columnspan=2, pady=10)
+
+        # --- Error Values Tab ---
+        error_tab.grid_columnconfigure(0, weight=1)
+        error_tab.grid_columnconfigure(1, weight=1)
+        xerr_title = customtkinter.CTkLabel(error_tab, text='xerr value:', font=sub_title)
+        yerr_title = customtkinter.CTkLabel(error_tab, text='yerr value:', font=sub_title)
+        self.xerr_entry = customtkinter.CTkEntry(error_tab)
+        self.yerr_entry = customtkinter.CTkEntry(error_tab)
+
+        xerr_title.grid(row=0, column=0, padx=5, pady=2, sticky='ew')
+        self.xerr_entry.grid(row=1, column=0, padx=5, pady=2, sticky='ew')
+        yerr_title.grid(row=0, column=1, padx=5, pady=2, sticky='ew')
+        self.yerr_entry.grid(row=1, column=1, padx=5, pady=2, sticky='ew')
+
+        # --- Options Tab ---
+        options_tab.grid_columnconfigure(0, weight=1)
+        options_tab.grid_columnconfigure(1, weight=1)
+        uplims_checkbox = customtkinter.CTkCheckBox(options_tab, text='upper limits', variable=self.u_var)
+        lolims_checkbox = customtkinter.CTkCheckBox(options_tab, text='lower limits', variable=self.l_var)
+
+        uplims_checkbox.grid(row=0, column=0, padx=5, pady=5)
+        lolims_checkbox.grid(row=0, column=1, padx=5, pady=5)
+
+        # --- Make Error Bar Button ---
         eb_button = customtkinter.CTkButton(self, text='make error bar', command=self.make_errorBar)
+        eb_button.pack(pady=10)
 
-        title.grid(row=0, column=1)
-        x_title.grid(row=1, column=0, padx=5)
-        y_title.grid(row=1, column=2, padx=5)
-        self.x_entry.grid(row=2, column=0, padx=5)
-        self.y_entry.grid(row=2, column=2, padx=5)
-        upload_x.grid(row=3, column=0, pady=5, padx=5)
-        upload_y.grid(row=3, column=2, pady=5, padx=5)
-        xerr_title.grid(row=4, column=0, padx=5)
-        yerr_title.grid(row=4, column=2, padx=5)
-        self.xerr_entry.grid(row=5, column=0, padx=5)
-        self.yerr_entry.grid(row=5, column=2, padx=5)
-        uplims_checkbox.grid(row=6, column=0, padx=5)
-        lolims_checkbox.grid(row=6, column=2, padx=5)
-        eb_button.grid(row=10, column=1, pady=10)
+        self.finalize_setup()
 
-        if middle_v:
-            self.update()
-            place_w_middle(self)
-
-        if fun_numbers_v:
-            entry_1_r = f'{randint(0, 10)} {randint(0, 10)} {randint(0, 10)}'
-            entry_2_r = f'{randint(0, 10)} {randint(0, 10)} {randint(0, 10)}'
-            self.x_entry.insert(END, entry_1_r)
-            self.y_entry.insert(END, entry_2_r)
-
-        self.protocol('WM_DELETE_WINDOW', self.close_this)
-        self.errorbar_root = self
-        opened_programs.append(self.errorbar_root)
-
-    def close_this(self):
-        opened_programs.remove(self.errorbar_root)
-        self.destroy()
+    def _setup_fun_numbers(self):
+        entry_1_r = f'{randint(0, 10)} {randint(0, 10)} {randint(0, 10)}'
+        entry_2_r = f'{randint(0, 10)} {randint(0, 10)} {randint(0, 10)}'
+        self.x_entry.insert(END, entry_1_r)
+        self.y_entry.insert(END, entry_2_r)
 
     def make_errorBar(self):
         plt.clf()
@@ -465,95 +543,82 @@ class ErrorBarMaker(customtkinter.CTk):
         plt.show()
 
 
-class ContourfMaker(customtkinter.CTk):
+class ContourfMaker(BasePlotMaker):
 
     def __init__(self):
-        super().__init__()
-        self.title('Egon contourf Maker')
-        if not (resize_v):
-            self.resizable(False, False)
-        main_frame = customtkinter.CTkFrame(self)
-        title = customtkinter.CTkLabel(main_frame, text='Graphical user interface for ContourF',
-                                       font=main_title)
-        x_title = customtkinter.CTkLabel(main_frame, text='x values:',
-                                         font=sub_title)
-        z_title = customtkinter.CTkLabel(main_frame, text='z values:',
-                                         font=sub_title)
-        y_title = customtkinter.CTkLabel(main_frame, text='y values:',
-                                         font=sub_title)
-        self.x_entry = customtkinter.CTkEntry(main_frame)
-        self.y_entry = customtkinter.CTkEntry(main_frame)
-        z_frame = customtkinter.CTkFrame(self)
-        self.z_entry = customtkinter.CTkEntry(main_frame)
-        self.z_entry2 = customtkinter.CTkEntry(z_frame)
-        self.z_entry3 = customtkinter.CTkEntry(z_frame)
-        self.z_entry4 = customtkinter.CTkEntry(z_frame)
-        upload_x = customtkinter.CTkButton(main_frame, text='Upload', command=lambda: upload(self.x_entry))
-        upload_z = customtkinter.CTkButton(main_frame, text='Upload', command=lambda: upload(self.z_entry))
-        upload_y = customtkinter.CTkButton(main_frame, text='Upload', command=lambda: upload(self.y_entry))
+        super().__init__('Egon contourf Maker')
+        title = customtkinter.CTkLabel(self, text='Graphical user interface for ContourF', font=main_title)
+        title.pack(pady=10)
+
+        tabview = customtkinter.CTkTabview(self)
+        tabview.pack(padx=5, pady=5, fill='both', expand=True)
+
+        data_tab = tabview.add('Data')
+        z_values_tab = tabview.add('Z Values')
+
+        # --- Data Tab ---
+        data_tab.grid_columnconfigure(0, weight=1)
+        data_tab.grid_columnconfigure(1, weight=1)
+        x_title = customtkinter.CTkLabel(data_tab, text='x values:', font=sub_title)
+        y_title = customtkinter.CTkLabel(data_tab, text='y values:', font=sub_title)
+        self.x_entry = customtkinter.CTkEntry(data_tab)
+        self.y_entry = customtkinter.CTkEntry(data_tab)
+        upload_button = customtkinter.CTkButton(data_tab, text='Upload Data',
+                                                command=lambda: ask_for_file([self.x_entry, self.y_entry]))
+
+        x_title.grid(row=0, column=0, padx=5, pady=2, sticky='ew')
+        self.x_entry.grid(row=1, column=0, padx=5, pady=2, sticky='ew')
+        y_title.grid(row=0, column=1, padx=5, pady=2, sticky='ew')
+        self.y_entry.grid(row=1, column=1, padx=5, pady=2, sticky='ew')
+        upload_button.grid(row=2, column=0, columnspan=2, pady=10)
+
+        # --- Z Values Tab ---
+        z_values_tab.grid_columnconfigure(0, weight=1)
+        z_values_tab.grid_columnconfigure(1, weight=1)
+        z_title = customtkinter.CTkLabel(z_values_tab, text='z values:', font=sub_title)
+        self.z_entry = customtkinter.CTkEntry(z_values_tab)
+        self.z_entry2 = customtkinter.CTkEntry(z_values_tab)
+        self.z_entry3 = customtkinter.CTkEntry(z_values_tab)
+        self.z_entry4 = customtkinter.CTkEntry(z_values_tab)
+
+        z_title.grid(row=0, column=0, columnspan=2, pady=5)
+        self.z_entry.grid(row=1, column=0, padx=5, pady=2, sticky='ew')
+        self.z_entry2.grid(row=1, column=1, padx=5, pady=2, sticky='ew')
+        self.z_entry3.grid(row=2, column=0, padx=5, pady=2, sticky='ew')
+        self.z_entry4.grid(row=2, column=1, padx=5, pady=2, sticky='ew')
+
+        # --- Make Contourf Button ---
         contour_button = customtkinter.CTkButton(self, text='make contourf', command=self.make_contourf)
-        title_title = customtkinter.CTkLabel(main_frame, text='title:', font=sub_title)
-        title_entry = customtkinter.CTkEntry(main_frame)
+        contour_button.pack(pady=10)
 
-        main_frame.grid(row=0, column=1)
-        z_frame.grid(row=1, column=1)
-        contour_button.grid(row=2, column=1, pady=10)
+        self.finalize_setup()
 
-        title.grid(row=0, column=1)
-        x_title.grid(row=1, column=0, padx=5)
-        z_title.grid(row=2, column=1)
-        y_title.grid(row=1, column=2, padx=5)
-        self.x_entry.grid(row=2, column=0, padx=5)
-        self.z_entry.grid(row=3, column=1)
-        self.y_entry.grid(row=2, column=2, padx=5)
-        upload_x.grid(row=3, column=0, pady=3, padx=5)
-        upload_y.grid(row=3, column=2, pady=3, padx=5)
-
-        self.z_entry2.grid(row=4, column=0, padx=5)
-        self.z_entry3.grid(row=4, column=1)
-        self.z_entry4.grid(row=4, column=2, padx=5)
-
-        if middle_v:
-            self.update()
-            place_w_middle(self)
-
-        if fun_numbers_v:
-            entry_1_r = f'{randint(0, 10)} {randint(0, 10)}'
-            entry_2_r = f'{randint(0, 10)} {randint(0, 10)}'
-            self.x_entry.insert(END, entry_1_r)
-            self.y_entry.insert(END, entry_2_r)
-            self.z_entry.insert(END, randint(0, 10))
-            self.z_entry2.insert(END, randint(0, 10))
-            self.z_entry3.insert(END, randint(0, 10))
-            self.z_entry4.insert(END, randint(0, 10))
-
-        self.protocol('WM_DELETE_WINDOW', self.close_this)
-        self.contourf_root = self
-        opened_programs.append(self.contourf_root)
-
-    def close_this(self):
-        opened_programs.remove(self.contourf_root)
-        self.destroy()
+    def _setup_fun_numbers(self):
+        entry_1_r = f'{randint(0, 10)} {randint(0, 10)}'
+        entry_2_r = f'{randint(0, 10)} {randint(0, 10)}'
+        self.x_entry.insert(END, entry_1_r)
+        self.y_entry.insert(END, entry_2_r)
+        self.z_entry.insert(END, randint(0, 10))
+        self.z_entry2.insert(END, randint(0, 10))
+        self.z_entry3.insert(END, randint(0, 10))
+        self.z_entry4.insert(END, randint(0, 10))
 
     def make_contourf(self):
         self.x_values = make_array(self.x_entry)
         # must be 2x2 - D array!!!
         self.z_values = tuple(array((self.z_entry.get().split(' '), self.z_entry2.get().split(' '),
-                                           self.z_entry3.get().split(' '), self.z_entry4.get().split()), dtype='int32'
-                                          ).reshape(2, 2))
+                                     self.z_entry3.get().split(' '), self.z_entry4.get().split()), dtype='int32'
+                                    ).reshape(2, 2))
         self.y_values = make_array(self.y_entry)
         plt.contourf(self.x_values, self.y_values, self.z_values)
         plt.show()
 
 
-class ImShowMaker(customtkinter.CTk):
+class ImShowMaker(BasePlotMaker):
 
     def __init__(self):
-        super().__init__()
+        super().__init__('Egon Imshow maker')
         global im_transparency
-        self.title('Egon  Imshow maker')
-        if not (resize_v):
-            self.resizable(False, False)
         self.im_up = False
         self.s_cmap = 'Accent'
         self.cmap_values = ['Accent', 'Accent_r', 'Blues', 'Blues_r', 'BrBG', 'BrBG_r', 'BuGn', 'BuGn_r', 'BuPu',
@@ -586,57 +651,49 @@ class ImShowMaker(customtkinter.CTk):
         self.cmap_var.set('Accent')
         self.interpolation_var.set('none')
 
-        title = customtkinter.CTkLabel(self, text='Graphical user interface for ImageShow',
-                                       font=main_title)
-        x_title = customtkinter.CTkLabel(self, text='x values:',
-                                         font=sub_title)
-        title_title = customtkinter.CTkLabel(self, text='add title:',
-                                             font=sub_title)
-        tr_title = customtkinter.CTkLabel(self, text='transparency:',
-                                          font=sub_title)
-        # self.x_entry = customtkinter.CTkEntry(self)
-        self.title_entry = customtkinter.CTkEntry(self)
-        im_transparency = customtkinter.CTkSlider(self, from_=0, to=100)
+        title = customtkinter.CTkLabel(self, text='Graphical user interface for ImageShow', font=main_title)
+        title.pack(pady=10)
+
+        tabview = customtkinter.CTkTabview(self)
+        tabview.pack(padx=5, pady=5, fill='both', expand=True)
+
+        image_tab = tabview.add('Image')
+        style_tab = tabview.add('Style')
+
+        # --- Image Tab ---
+        image_tab.grid_columnconfigure(0, weight=1)
+        upload_im = customtkinter.CTkButton(image_tab, text='Upload (SG. png)', command=self.upload_image)
+        upload_im.pack(pady=10, padx=10, fill='x')
+
+        # --- Style Tab ---
+        style_tab.grid_columnconfigure(0, weight=1)
+        style_tab.grid_columnconfigure(1, weight=1)
+        title_title = customtkinter.CTkLabel(style_tab, text='add title:', font=sub_title)
+        self.title_entry = customtkinter.CTkEntry(style_tab)
+        tr_title = customtkinter.CTkLabel(style_tab, text='transparency:', font=sub_title)
+        im_transparency = customtkinter.CTkSlider(style_tab, from_=0, to=100)
         im_transparency.set(100)
-        upload_im = customtkinter.CTkButton(self, text='Upload (SG. png)', command=self.upload_image)
-        upload_y = customtkinter.CTkButton(self, text='Upload', command=lambda: upload(self.y_entry))
-        c_map_title = customtkinter.CTkLabel(self, text='cmap:', font=sub_title)
-        cmap_combobox = customtkinter.CTkComboBox(self, variable=self.cmap_var, values=self.cmap_values,
-                                                  command=self.change_cmap,  state='readonly')
-        interpolation_title = customtkinter.CTkLabel(self, text='interpolation:', font=sub_title)
-        self.interpolation_c = customtkinter.CTkComboBox(self, values=interpolation_values,
-                                                         variable=self.interpolation_var,  state='readonly'
-                                                         )
-        # title_title = customtkinter.CTkLabel(self, text='add title:', font=sub_title)
-        # self.title_entry = customtkinter.CTkEntry(self)
+        c_map_title = customtkinter.CTkLabel(style_tab, text='cmap:', font=sub_title)
+        cmap_combobox = customtkinter.CTkComboBox(style_tab, variable=self.cmap_var, values=self.cmap_values,
+                                                  command=self.change_cmap, state='readonly')
+        interpolation_title = customtkinter.CTkLabel(style_tab, text='interpolation:', font=sub_title)
+        self.interpolation_c = customtkinter.CTkComboBox(style_tab, values=interpolation_values,
+                                                         variable=self.interpolation_var, state='readonly')
+
+        title_title.grid(row=0, column=0, padx=5, pady=2)
+        self.title_entry.grid(row=1, column=0, padx=5, pady=2, sticky='ew')
+        tr_title.grid(row=0, column=1, padx=5, pady=2)
+        im_transparency.grid(row=1, column=1, padx=5, pady=2, sticky='ew')
+        c_map_title.grid(row=2, column=0, padx=5, pady=2)
+        cmap_combobox.grid(row=3, column=0, padx=5, pady=2, sticky='ew')
+        interpolation_title.grid(row=2, column=1, padx=5, pady=2)
+        self.interpolation_c.grid(row=3, column=1, padx=5, pady=2, sticky='ew')
+
+        # --- Make Imshow Button ---
         imshow_button = customtkinter.CTkButton(self, text='make imshow', command=self.make_imshow)
+        imshow_button.pack(pady=10)
 
-        title.grid(row=0, column=1)
-        x_title.grid(row=1, column=0, padx=5)
-        title_title.grid(row=1, column=1)
-        tr_title.grid(row=1, column=2, padx=5)
-        # self.x_entry.grid(row=2, column=0)
-        upload_im.grid(row=2, column=0, padx=5)
-        self.title_entry.grid(row=2, column=1)
-        im_transparency.grid(row=2, column=2, padx=5)
-        upload_y.grid(row=3, column=2, padx=5)
-        c_map_title.grid(row=4, column=0, padx=5)
-        interpolation_title.grid(row=4, column=2, padx=5)
-        cmap_combobox.grid(row=5, column=0, padx=5)
-        self.interpolation_c.grid(row=5, column=2, padx=5)
-        imshow_button.grid(row=10, column=1, pady=10)
-
-        if middle_v:
-            self.update()
-            place_w_middle(self)
-
-        self.protocol('WM_DELETE_WINDOW', self.close_this)
-        self.imshow_root = self
-        opened_programs.append(self.imshow_root)
-
-    def close_this(self):
-        opened_programs.remove(self.imshow_root)
-        self.destroy()
+        self.finalize_setup()
 
     def make_imshow(self):
         # self.x_values = numpy.array(self.x_entry.get().split(' '))
@@ -675,79 +732,75 @@ class ImShowMaker(customtkinter.CTk):
             return 'none'
 
 
-class ScatterPlotMaker(customtkinter.CTk):
+class ScatterPlotMaker(BasePlotMaker):
 
     def __init__(self):
-        super().__init__()
+        super().__init__('Egon scatter plot maker')
         global sc_transparency
-        self.title('Egon scatter plot maker')
-        if not (resize_v):
-            self.resizable(False, False)
 
-        title = customtkinter.CTkLabel(self, text='Graphical user interface for ScatterPlot',
-                                       font=main_title)
-        x_title = customtkinter.CTkLabel(self, text='x values:',
-                                         font=sub_title)
-        colors_title = customtkinter.CTkLabel(self, text='colors values:',
-                                              font=sub_title)
-        y_title = customtkinter.CTkLabel(self, text='y values:',
-                                         font=sub_title)
-        self.x_entry = customtkinter.CTkEntry(self)
-        self.colors_entry = customtkinter.CTkEntry(self)
-        self.y_entry = customtkinter.CTkEntry(self)
-        upload_y = customtkinter.CTkButton(self, text='Upload', command=lambda: upload(self.y_entry))
-        upload_x = customtkinter.CTkButton(self, text='Upload', command=lambda: upload(self.x_entry))
-        styles_title = customtkinter.CTkLabel(self, text='Styles:', font=med_bold_title)
-        transparency_title = customtkinter.CTkLabel(self, text='transparency:',
-                                                    font=sub_title)
-        size_title = customtkinter.CTkLabel(self, text='sizes:',
-                                            font=sub_title)
-        sc_transparency = customtkinter.CTkSlider(self, from_=0, to=100)
+        title = customtkinter.CTkLabel(self, text='Graphical user interface for ScatterPlot', font=main_title)
+        title.pack(pady=10)
+
+        tabview = customtkinter.CTkTabview(self)
+        tabview.pack(padx=5, pady=5, fill='both', expand=True)
+
+        data_tab = tabview.add('Data')
+        style_tab = tabview.add('Style')
+
+        # --- Data Tab ---
+        data_tab.grid_columnconfigure(0, weight=1)
+        data_tab.grid_columnconfigure(1, weight=1)
+        x_title = customtkinter.CTkLabel(data_tab, text='x values:', font=sub_title)
+        y_title = customtkinter.CTkLabel(data_tab, text='y values:', font=sub_title)
+        self.x_entry = customtkinter.CTkEntry(data_tab)
+        self.y_entry = customtkinter.CTkEntry(data_tab)
+        upload_button = customtkinter.CTkButton(data_tab, text='Upload Data',
+                                                command=lambda: ask_for_file([self.x_entry, self.y_entry]))
+
+        x_title.grid(row=0, column=0, padx=5, pady=2, sticky='ew')
+        self.x_entry.grid(row=1, column=0, padx=5, pady=2, sticky='ew')
+        y_title.grid(row=0, column=1, padx=5, pady=2, sticky='ew')
+        self.y_entry.grid(row=1, column=1, padx=5, pady=2, sticky='ew')
+        upload_button.grid(row=2, column=0, columnspan=2, pady=10)
+
+        # --- Style Tab ---
+        style_tab.grid_columnconfigure(0, weight=1)
+        style_tab.grid_columnconfigure(1, weight=1)
+        colors_title = customtkinter.CTkLabel(style_tab, text='colors values:', font=sub_title)
+        self.colors_entry = customtkinter.CTkEntry(style_tab)
+        styles_title = customtkinter.CTkLabel(style_tab, text='Styles:', font=med_bold_title)
+        transparency_title = customtkinter.CTkLabel(style_tab, text='transparency:', font=sub_title)
+        size_title = customtkinter.CTkLabel(style_tab, text='sizes:', font=sub_title)
+        sc_transparency = customtkinter.CTkSlider(style_tab, from_=0, to=100)
         sc_transparency.set(100)
-        self.size = customtkinter.CTkEntry(self)
+        self.size = customtkinter.CTkEntry(style_tab)
 
         color_maps_values = ['viridis', 'plasma', 'inferno', 'magma', 'cividis']
         color_maps_v = customtkinter.StringVar()
         color_maps_v.set('viridis')
-        self.color_map = customtkinter.CTkComboBox(self, values=color_maps_values, variable=color_maps_v,  state='readonly')
+        self.color_map = customtkinter.CTkComboBox(style_tab, values=color_maps_values, variable=color_maps_v,
+                                                   state='readonly')
 
+        colors_title.grid(row=0, column=0, columnspan=2, pady=5)
+        self.colors_entry.grid(row=1, column=0, columnspan=2, padx=5, pady=2, sticky='ew')
+        styles_title.grid(row=2, column=0, columnspan=2, pady=5)
+        size_title.grid(row=3, column=0, padx=5, pady=2)
+        self.size.grid(row=4, column=0, padx=5, pady=2, sticky='ew')
+        transparency_title.grid(row=3, column=1, padx=5, pady=2)
+        sc_transparency.grid(row=4, column=1, padx=5, pady=2, sticky='ew')
+        self.color_map.grid(row=5, column=0, columnspan=2, padx=5, pady=5, sticky='ew')
+
+        # --- Make Scatter Button ---
         self.make_scatter = customtkinter.CTkButton(self, command=self.make_scatter_plot, text='Make scatter plot')
+        self.make_scatter.pack(pady=10)
 
-        title.grid(row=0, column=1)
-        x_title.grid(row=1, column=0, padx=5)
-        colors_title.grid(row=1, column=1)
-        y_title.grid(row=1, column=2, padx=5)
-        self.x_entry.grid(row=2, column=0, padx=5)
-        self.colors_entry.grid(row=2, column=1)
-        self.y_entry.grid(row=2, column=2, padx=5)
-        upload_x.grid(row=3, column=0, padx=5, pady=3)
-        upload_y.grid(row=3, column=2, padx=5, pady=3)
-        styles_title.grid(row=4, column=1)
-        size_title.grid(row=5, column=0, padx=5)
+        self.finalize_setup()
 
-        transparency_title.grid(row=5, column=2, padx=5)
-        self.size.grid(row=6, column=0, padx=5)
-        self.color_map.grid(row=6, column=1)
-        sc_transparency.grid(row=6, column=2, padx=5)
-        self.make_scatter.grid(row=10, column=1, pady=10)
-
-        if middle_v:
-            self.update()
-            place_w_middle(self)
-
-        if fun_numbers_v:
-            entry_1_r = f'{randint(0, 20)} {randint(0, 20)} {randint(0, 20)} {randint(0, 20)}'
-            entry_2_r = f'{randint(0, 20)} {randint(0, 20)} {randint(0, 20)} {randint(0, 20)}'
-            self.x_entry.insert(END, entry_1_r)
-            self.y_entry.insert(END, entry_2_r)
-
-        self.protocol('WM_DELETE_WINDOW', self.close_this)
-        self.scatterplot_root = self
-        opened_programs.append(self.scatterplot_root)
-
-    def close_this(self):
-        opened_programs.remove(self.scatterplot_root)
-        self.destroy()
+    def _setup_fun_numbers(self):
+        entry_1_r = f'{randint(0, 20)} {randint(0, 20)} {randint(0, 20)} {randint(0, 20)}'
+        entry_2_r = f'{randint(0, 20)} {randint(0, 20)} {randint(0, 20)} {randint(0, 20)}'
+        self.x_entry.insert(END, entry_1_r)
+        self.y_entry.insert(END, entry_2_r)
 
     def make_scatter_plot(self):
         self.x_values = make_array(self.x_entry)
@@ -783,32 +836,44 @@ class ScatterPlotMaker(customtkinter.CTk):
             return colors_values
 
 
-class StemMaker(customtkinter.CTk):
+class StemMaker(BasePlotMaker):
 
     def __init__(self):
-        super().__init__()
-        self.title('Egon stem maker')
-        if not (resize_v):
-            self.resizable(False, False)
+        super().__init__('Egon stem maker')
 
-        title = customtkinter.CTkLabel(self, text='Graphical user interface for Stem',
-                                       font=main_title)
-        x_title = customtkinter.CTkLabel(self, text='x values:',
-                                         font=sub_title)
-        bottom_title = customtkinter.CTkLabel(self, text='bottom value:',
-                                              font=sub_title)
-        y_title = customtkinter.CTkLabel(self, text='y values:',
-                                         font=sub_title)
-        self.x_entry = customtkinter.CTkEntry(self)
-        self.bottom_entry = customtkinter.CTkEntry(self)
-        self.y_entry = customtkinter.CTkEntry(self)
-        upload_x = customtkinter.CTkButton(self, text='Upload', command=lambda: upload(self.x_entry))
-        upload_y = customtkinter.CTkButton(self, text='Upload', command=lambda: upload(self.y_entry))
-        stem_button = customtkinter.CTkButton(self, text='Make a stem', command=self.make_stem)
+        title = customtkinter.CTkLabel(self, text='Graphical user interface for Stem', font=main_title)
+        title.pack(pady=10)
 
-        styles_title = customtkinter.CTkLabel(self, text='Styles:', font=med_bold_title)
-        line_title = customtkinter.CTkLabel(self, text='lines format:', font=sub_title)
-        marker_title = customtkinter.CTkLabel(self, text='marker format:', font=sub_title)
+        tabview = customtkinter.CTkTabview(self)
+        tabview.pack(padx=5, pady=5, fill='both', expand=True)
+
+        data_tab = tabview.add('Data')
+        style_tab = tabview.add('Style')
+
+        # --- Data Tab ---
+        data_tab.grid_columnconfigure(0, weight=1)
+        data_tab.grid_columnconfigure(1, weight=1)
+        x_title = customtkinter.CTkLabel(data_tab, text='x values:', font=sub_title)
+        y_title = customtkinter.CTkLabel(data_tab, text='y values:', font=sub_title)
+        self.x_entry = customtkinter.CTkEntry(data_tab)
+        self.y_entry = customtkinter.CTkEntry(data_tab)
+        upload_button = customtkinter.CTkButton(data_tab, text='Upload Data',
+                                                command=lambda: ask_for_file([self.x_entry, self.y_entry]))
+
+        x_title.grid(row=0, column=0, padx=5, pady=2, sticky='ew')
+        self.x_entry.grid(row=1, column=0, padx=5, pady=2, sticky='ew')
+        y_title.grid(row=0, column=1, padx=5, pady=2, sticky='ew')
+        self.y_entry.grid(row=1, column=1, padx=5, pady=2, sticky='ew')
+        upload_button.grid(row=2, column=0, columnspan=2, pady=10)
+
+        # --- Style Tab ---
+        style_tab.grid_columnconfigure(0, weight=1)
+        style_tab.grid_columnconfigure(1, weight=1)
+        bottom_title = customtkinter.CTkLabel(style_tab, text='bottom value:', font=sub_title)
+        self.bottom_entry = customtkinter.CTkEntry(style_tab)
+        styles_title = customtkinter.CTkLabel(style_tab, text='Styles:', font=med_bold_title)
+        line_title = customtkinter.CTkLabel(style_tab, text='lines format:', font=sub_title)
+        marker_title = customtkinter.CTkLabel(style_tab, text='marker format:', font=sub_title)
 
         line_values = ['-', '--', ':']
         marker_values = ['ro', 'r-', 'g--', 'm:']
@@ -816,43 +881,28 @@ class StemMaker(customtkinter.CTk):
         marker_var = customtkinter.StringVar()
         line_var.set('-')
         marker_var.set('ro')
-        self.line = customtkinter.CTkComboBox(self, values=line_values, variable=line_var,  state='readonly')
-        self.marker = customtkinter.CTkComboBox(self, values=marker_values, variable=marker_var,  state='readonly')
+        self.line = customtkinter.CTkComboBox(style_tab, values=line_values, variable=line_var, state='readonly')
+        self.marker = customtkinter.CTkComboBox(style_tab, values=marker_values, variable=marker_var, state='readonly')
 
-        title.grid(row=0, column=1)
-        x_title.grid(row=1, column=0, padx=5)
-        bottom_title.grid(row=1, column=1)
-        y_title.grid(row=1, column=2, padx=5)
-        self.x_entry.grid(row=2, column=0, padx=5)
-        self.bottom_entry.grid(row=2, column=1)
-        self.y_entry.grid(row=2, column=2, padx=5)
-        upload_x.grid(row=3, column=0, padx=5, pady=3)
-        upload_y.grid(row=3, column=2, padx=5, pady=3)
-        styles_title.grid(row=4, column=1)
-        line_title.grid(row=5, column=0, padx=5)
-        marker_title.grid(row=5, column=2, padx=5)
-        self.line.grid(row=6, column=0, padx=5)
-        self.marker.grid(row=6, column=2, padx=5)
+        bottom_title.grid(row=0, column=0, columnspan=2, pady=5)
+        self.bottom_entry.grid(row=1, column=0, columnspan=2, padx=5, pady=2, sticky='ew')
+        styles_title.grid(row=2, column=0, columnspan=2, pady=5)
+        line_title.grid(row=3, column=0, padx=5, pady=2)
+        self.line.grid(row=4, column=0, padx=5, pady=2, sticky='ew')
+        marker_title.grid(row=3, column=1, padx=5, pady=2)
+        self.marker.grid(row=4, column=1, padx=5, pady=2, sticky='ew')
 
-        stem_button.grid(row=10, column=1, pady=10)
+        # --- Make Stem Button ---
+        stem_button = customtkinter.CTkButton(self, text='Make a stem', command=self.make_stem)
+        stem_button.pack(pady=10)
 
-        if middle_v:
-            self.update()
-            place_w_middle(self)
+        self.finalize_setup()
 
-        if fun_numbers_v:
-            entry_1_r = f'{randint(0, 10)} {randint(0, 10)}'
-            entry_2_r = f'{randint(0, 10)} {randint(0, 10)}'
-            self.x_entry.insert(END, entry_1_r)
-            self.y_entry.insert(END, entry_2_r)
-
-        self.protocol('WM_DELETE_WINDOW', self.close_this)
-        self.stemmaker_root = self
-        opened_programs.append(self.stemmaker_root)
-
-    def close_this(self):
-        opened_programs.remove(self.stemmaker_root)
-        self.destroy()
+    def _setup_fun_numbers(self):
+        entry_1_r = f'{randint(0, 10)} {randint(0, 10)}'
+        entry_2_r = f'{randint(0, 10)} {randint(0, 10)}'
+        self.x_entry.insert(END, entry_1_r)
+        self.y_entry.insert(END, entry_2_r)
 
     def make_stem(self):
         x_values = make_array(self.x_entry)
@@ -869,80 +919,80 @@ class StemMaker(customtkinter.CTk):
             return 0
 
 
-
-class PieMaker(customtkinter.CTk):
+class PieMaker(BasePlotMaker):
 
     def __init__(self):
-        super().__init__()
-        self.title('Egon pie-chart maker')
-        if not (resize_v):
-            self.resizable(False, False)
+        super().__init__('Egon pie-chart maker')
 
-        title = customtkinter.CTkLabel(self, text='Graphical user interface for Pie-charts',
-                                       font=main_title)
-        percentage_title = customtkinter.CTkLabel(self, text='values:',
-                                                  font=sub_title)
-        self.percentage_entry = customtkinter.CTkEntry(self)
-        names_title = customtkinter.CTkLabel(self, text='Names:',
-                                             font=sub_title)
-        self.names_entry = customtkinter.CTkEntry(self)
+        title = customtkinter.CTkLabel(self, text='Graphical user interface for Pie-charts', font=main_title)
+        title.pack(pady=10)
 
+        tabview = customtkinter.CTkTabview(self)
+        tabview.pack(padx=5, pady=5, fill='both', expand=True)
+
+        data_tab = tabview.add('Data')
+        style_tab = tabview.add('Style')
+        legend_tab = tabview.add('Legend')
+
+        # --- Data Tab ---
+        data_tab.grid_columnconfigure(0, weight=1)
+        data_tab.grid_columnconfigure(1, weight=1)
+        percentage_title = customtkinter.CTkLabel(data_tab, text='values:', font=sub_title)
+        self.percentage_entry = customtkinter.CTkEntry(data_tab)
+        names_title = customtkinter.CTkLabel(data_tab, text='Names:', font=sub_title)
+        self.names_entry = customtkinter.CTkEntry(data_tab)
+        upload_button = customtkinter.CTkButton(data_tab, text='Upload Data',
+                                                command=lambda: ask_for_file([self.percentage_entry, self.names_entry]))
+
+        percentage_title.grid(row=0, column=0, padx=5, pady=2, sticky='ew')
+        self.percentage_entry.grid(row=1, column=0, padx=5, pady=2, sticky='ew')
+        names_title.grid(row=0, column=1, padx=5, pady=2, sticky='ew')
+        self.names_entry.grid(row=1, column=1, padx=5, pady=2, sticky='ew')
+        upload_button.grid(row=2, column=0, columnspan=2, pady=10)
+
+        # --- Style Tab ---
+        style_tab.grid_columnconfigure(0, weight=1)
+        style_tab.grid_columnconfigure(1, weight=1)
         self.s_var = IntVar()
+        styles_title = customtkinter.CTkLabel(style_tab, text='Styles', font=med_bold_title)
+        shadows = customtkinter.CTkCheckBox(style_tab, text='Shadows', variable=self.s_var)
+        sa_title = customtkinter.CTkLabel(style_tab, text='start angle:', font=sub_title)
+        self.start_angle = customtkinter.CTkEntry(style_tab)
+        explode_title = customtkinter.CTkLabel(style_tab, text='Explode values:', font=sub_title)
+        self.explode_entry = customtkinter.CTkEntry(style_tab)
+
+        styles_title.grid(row=0, column=0, columnspan=2, pady=5)
+        shadows.grid(row=1, column=0, padx=5, pady=5)
+        sa_title.grid(row=2, column=0, padx=5, pady=2)
+        self.start_angle.grid(row=3, column=0, padx=5, pady=2, sticky='ew')
+        explode_title.grid(row=2, column=1, padx=5, pady=2)
+        self.explode_entry.grid(row=3, column=1, padx=5, pady=2, sticky='ew')
+
+        # --- Legend Tab ---
+        legend_tab.grid_columnconfigure(0, weight=1)
         self.l_var = IntVar()
-        styles_title = customtkinter.CTkLabel(self, text='Styles',
-                                              font=med_bold_title)
-        shadows = customtkinter.CTkCheckBox(self, text='Shadows', variable=self.s_var)
-        sa_title = customtkinter.CTkLabel(self, text='start angle:',
-                                          font=sub_title)
-        self.start_angle = customtkinter.CTkEntry(self)
-        legend_tt = customtkinter.CTkLabel(self, text='Legend title:',
-                                           font=sub_title)
-        legend_title = customtkinter.CTkLabel(self, text='Legend:',
-                                              font=med_bold_title)
-        legend = customtkinter.CTkCheckBox(self, text='Legend', variable=self.l_var)
-        self.pie_legend_title = customtkinter.CTkEntry(self)
-        explode_title = customtkinter.CTkLabel(self, text='Explode values:',
-                                               font=sub_title)
-        self.explode_entry = customtkinter.CTkEntry(self)
+        legend_title = customtkinter.CTkLabel(legend_tab, text='Legend:', font=med_bold_title)
+        legend = customtkinter.CTkCheckBox(legend_tab, text='Legend', variable=self.l_var)
+        legend_tt = customtkinter.CTkLabel(legend_tab, text='Legend title:', font=sub_title)
+        self.pie_legend_title = customtkinter.CTkEntry(legend_tab)
 
+        legend_title.pack(pady=5)
+        legend.pack(pady=5)
+        legend_tt.pack(pady=2)
+        self.pie_legend_title.pack(padx=5, pady=2, fill='x')
+
+        # --- Make Pie Chart Button ---
         pie_button = customtkinter.CTkButton(self, text='Make a pie-chart', command=self.pie_maker)
+        pie_button.pack(pady=10)
 
-        title.grid(row=0, column=1)
-        percentage_title.grid(row=1, column=0, padx=5)
-        names_title.grid(row=1, column=2, padx=5)
-        self.percentage_entry.grid(row=2, column=0, padx=5)
-        self.names_entry.grid(row=2, column=2, padx=5)
-        legend_title.grid(row=4, column=1)
-        legend_tt.grid(row=5, column=2, padx=5)
-        legend.grid(row=6, column=0, padx=5)
-        self.pie_legend_title.grid(row=6, column=2, pady=10, padx=5)
-        styles_title.grid(row=9, column=1)
-        explode_title.grid(row=10, column=1)
-        sa_title.grid(row=10, column=2, padx=5)
-        shadows.grid(row=11, column=0, padx=5)
-        self.explode_entry.grid(row=11, column=1)
-        self.start_angle.grid(row=11, column=2, padx=5)
+        self.finalize_setup()
 
-        pie_button.grid(row=12, column=1, pady=10)
-
-        if middle_v:
-            self.update()
-            place_w_middle(self)
-
-        if fun_numbers_v:
-            characters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
-            entry_1_r = f'{randint(0, 10)} {randint(0, 10)}'
-            entry_2_r = f'{ran_choice(characters)} {ran_choice(characters)}'
-            self.percentage_entry.insert(END, entry_1_r)
-            self.names_entry.insert(END, entry_2_r)
-
-        self.protocol('WM_DELETE_WINDOW', self.close_this)
-        self.piemaker_root = self
-        opened_programs.append(self.piemaker_root)
-
-    def close_this(self):
-        opened_programs.remove(self.piemaker_root)
-        self.destroy()
+    def _setup_fun_numbers(self):
+        characters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
+        entry_1_r = f'{randint(0, 10)} {randint(0, 10)}'
+        entry_2_r = f'{ran_choice(characters)} {ran_choice(characters)}'
+        self.percentage_entry.insert(END, entry_1_r)
+        self.names_entry.insert(END, entry_2_r)
 
     def pie_maker(self):
         percentages_values = make_array(self.percentage_entry)
@@ -976,7 +1026,6 @@ class PieMaker(customtkinter.CTk):
         else:
             return False
 
-
     def angle(self):
         if self.start_angle.get():
             return int(self.start_angle.get())
@@ -984,13 +1033,10 @@ class PieMaker(customtkinter.CTk):
             return 0
 
 
-class HistogramMaker(customtkinter.CTk):
+class HistogramMaker(BasePlotMaker):
 
     def __init__(self):
-        super().__init__()
-        self.title('Egon histogram maker')
-        if not (resize_v):
-            self.resizable(False, False)
+        super().__init__('Egon histogram maker')
 
         title = customtkinter.CTkLabel(self, text='Graphical user interface for Histograms',
                                        font=main_title)
@@ -1000,8 +1046,8 @@ class HistogramMaker(customtkinter.CTk):
                                          font=sub_title)
         self.x_entry = customtkinter.CTkEntry(self)
         self.y_entry = customtkinter.CTkEntry(self)
-        x_upload = customtkinter.CTkButton(self, text='Upload', command=lambda: upload(self.x_entry))
-        y_upload = customtkinter.CTkButton(self, text='Upload', command=lambda: upload(self.y_entry))
+        upload_button = customtkinter.CTkButton(self, text='Upload Data',
+                                                command=lambda: ask_for_file([self.x_entry, self.y_entry]))
 
         # titles_title = customtkinter.CTkLabel(self, text='Change titles!',
         #                                       font=med_bold_title)
@@ -1030,8 +1076,7 @@ class HistogramMaker(customtkinter.CTk):
         y_title.grid(row=1, column=2, padx=5)
         self.x_entry.grid(row=2, column=0, padx=5)
         self.y_entry.grid(row=2, column=2, padx=5)
-        x_upload.grid(row=3, column=0, padx=5, pady=3)
-        y_upload.grid(row=3, column=2, padx=5, pady=3)
+        upload_button.grid(row=3, column=1, pady=10)
         titles_title.grid(row=4, column=1)
         x_title_.grid(row=5, column=0, padx=5)
         main_title_.grid(row=5, column=1)
@@ -1045,23 +1090,13 @@ class HistogramMaker(customtkinter.CTk):
         y_grid.grid(row=8, column=2, padx=5)
         histogram_button.grid(row=10, column=1, pady=10)
 
-        if middle_v:
-            self.update()
-            place_w_middle(self)
+        self.finalize_setup()
 
-        if fun_numbers_v:
-            entry_1_r = f'{randint(0, 10)} {randint(0, 10)}'
-            entry_2_r = f'{randint(0, 10)} {randint(0, 10)}'
-            self.x_entry.insert(END, entry_1_r)
-            self.y_entry.insert(END, entry_2_r)
-
-        self.protocol('WM_DELETE_WINDOW', self.close_this)
-        self.histomaker_root = self
-        opened_programs.append(self.histomaker_root)
-
-    def close_this(self):
-        opened_programs.remove(self.histomaker_root)
-        self.destroy()
+    def _setup_fun_numbers(self):
+        entry_1_r = f'{randint(0, 10)} {randint(0, 10)}'
+        entry_2_r = f'{randint(0, 10)} {randint(0, 10)}'
+        self.x_entry.insert(END, entry_1_r)
+        self.y_entry.insert(END, entry_2_r)
 
     def make_histogram(self):
         x_values = make_array(self.x_entry)
@@ -1092,78 +1127,78 @@ class HistogramMaker(customtkinter.CTk):
             return 'both'
 
 
-class BarMaker(customtkinter.CTk):
+class BarMaker(BasePlotMaker):
 
     def __init__(self):
-        super().__init__()
-        self.title('Egon bar maker')
-        if not (resize_v):
-            self.resizable(False, False)
+        super().__init__('Egon bar maker')
 
-        title = customtkinter.CTkLabel(self, text='Graphical user interface for Bars',
-                                       font=main_title)
-        bar_name_title = customtkinter.CTkLabel(self, text='bar names:',
-                                                font=sub_title)
-        y_title = customtkinter.CTkLabel(self, text='y values:',
-                                         font=sub_title)
-        self.bar_name_entry = customtkinter.CTkEntry(self)
-        self.y_entry = customtkinter.CTkEntry(self)
-        y_upload = customtkinter.CTkButton(self, text='Upload', command=lambda: upload(self.y_entry))
-        graph_button = customtkinter.CTkButton(self, text='Make a bar', command=self.make_bar)
+        title = customtkinter.CTkLabel(self, text='Graphical user interface for Bars', font=main_title)
+        title.pack(pady=10)
 
-        self.change_width_title = customtkinter.CTkLabel(self, text='change bars app_width:',
-                                                         font=sub_title)
-        self.bar_width = customtkinter.CTkEntry(self)
+        tabview = customtkinter.CTkTabview(self)
+        tabview.pack(padx=5, pady=5, fill='both', expand=True)
 
-        self.change_direction_title = customtkinter.CTkLabel(self, text='bars direction:',
-                                                             font=med_bold_title)
+        data_tab = tabview.add('Data')
+        style_tab = tabview.add('Style')
+        legend_tab = tabview.add('Legend')
+
+        # --- Data Tab ---
+        data_tab.grid_columnconfigure(0, weight=1)
+        data_tab.grid_columnconfigure(1, weight=1)
+        bar_name_title = customtkinter.CTkLabel(data_tab, text='bar names:', font=sub_title)
+        y_title = customtkinter.CTkLabel(data_tab, text='y values:', font=sub_title)
+        self.bar_name_entry = customtkinter.CTkEntry(data_tab)
+        self.y_entry = customtkinter.CTkEntry(data_tab)
+        upload_button = customtkinter.CTkButton(data_tab, text='Upload Data',
+                                                command=lambda: ask_for_file([self.bar_name_entry, self.y_entry]))
+
+        bar_name_title.grid(row=0, column=0, padx=5, pady=2, sticky='ew')
+        self.bar_name_entry.grid(row=1, column=0, padx=5, pady=2, sticky='ew')
+        y_title.grid(row=0, column=1, padx=5, pady=2, sticky='ew')
+        self.y_entry.grid(row=1, column=1, padx=5, pady=2, sticky='ew')
+        upload_button.grid(row=2, column=0, columnspan=2, pady=10)
+
+        # --- Style Tab ---
+        style_tab.grid_columnconfigure(0, weight=1)
+        style_tab.grid_columnconfigure(1, weight=1)
+        self.change_width_title = customtkinter.CTkLabel(style_tab, text='change bars app_width:', font=sub_title)
+        self.bar_width = customtkinter.CTkEntry(style_tab)
+        self.change_direction_title = customtkinter.CTkLabel(style_tab, text='bars direction:', font=med_bold_title)
         self.i2 = customtkinter.IntVar(value=1)
-        horizontal = customtkinter.CTkRadioButton(self, text='horizontal', variable=self.i2, value=1)
-        vertical = customtkinter.CTkRadioButton(self, text='vertical', variable=self.i2, value=2)
+        horizontal = customtkinter.CTkRadioButton(style_tab, text='horizontal', variable=self.i2, value=1)
+        vertical = customtkinter.CTkRadioButton(style_tab, text='vertical', variable=self.i2, value=2)
 
+        self.change_width_title.grid(row=0, column=0, columnspan=2, pady=5)
+        self.bar_width.grid(row=1, column=0, columnspan=2, padx=5, pady=2, sticky='ew')
+        self.change_direction_title.grid(row=2, column=0, columnspan=2, pady=5)
+        horizontal.grid(row=3, column=0, padx=5, pady=2)
+        vertical.grid(row=3, column=1, padx=5, pady=2)
+
+        # --- Legend Tab ---
+        legend_tab.grid_columnconfigure(0, weight=1)
         self.l_var = IntVar()
-        legend_tt = customtkinter.CTkLabel(self, text='Legend title:',
-                                           font=sub_title)
-        legend_title = customtkinter.CTkLabel(self, text='Legend:',
-                                              font=med_bold_title)
-        legend = customtkinter.CTkCheckBox(self, text='Legend', variable=self.l_var)
-        self.bar_legend_title = customtkinter.CTkEntry(self)
+        legend_title = customtkinter.CTkLabel(legend_tab, text='Legend:', font=med_bold_title)
+        legend = customtkinter.CTkCheckBox(legend_tab, text='Legend', variable=self.l_var)
+        legend_tt = customtkinter.CTkLabel(legend_tab, text='Legend title:', font=sub_title)
+        self.bar_legend_title = customtkinter.CTkEntry(legend_tab)
 
-        title.grid(row=0, column=1)
-        bar_name_title.grid(row=1, column=0, padx=5)
-        y_title.grid(row=1, column=2, padx=5)
-        self.bar_name_entry.grid(row=2, column=0, padx=5)
-        self.y_entry.grid(row=2, column=2, padx=5)
-        y_upload.grid(row=3, column=2, padx=5, pady=3)
-        self.change_width_title.grid(row=1, column=1)
-        self.bar_width.grid(row=2, column=1)
-        self.change_direction_title.grid(row=5, column=1)
-        horizontal.grid(row=6, column=0, padx=5)
-        vertical.grid(row=6, column=2, padx=5)
-        legend_title.grid(row=7, column=1)
-        legend_tt.grid(row=8, column=0, padx=5)
-        legend.grid(row=9, column=2, padx=5)
-        self.bar_legend_title.grid(row=9, column=0, padx=5)
-        graph_button.grid(row=10, column=1, pady=10)
+        legend_title.pack(pady=5)
+        legend.pack(pady=5)
+        legend_tt.pack(pady=2)
+        self.bar_legend_title.pack(padx=5, pady=2, fill='x')
 
-        if middle_v:
-            self.update()
-            place_w_middle(self)
+        # --- Make Bar Button ---
+        graph_button = customtkinter.CTkButton(self, text='Make a bar', command=self.make_bar)
+        graph_button.pack(pady=10)
 
-        if fun_numbers_v:
-            characters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
-            entry_1_r = f'{randint(0, 10)} {randint(0, 10)}'
-            entry_2_r = f'{ran_choice(characters)} {ran_choice(characters)}'
-            self.y_entry.insert(END, entry_1_r)
-            self.bar_name_entry.insert(END, entry_2_r)
+        self.finalize_setup()
 
-        self.protocol('WM_DELETE_WINDOW', self.close_this)
-        self.barmaker_root = self
-        opened_programs.append(self.barmaker_root)
-
-    def close_this(self):
-        opened_programs.remove(self.barmaker_root)
-        self.destroy()
+    def _setup_fun_numbers(self):
+        characters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
+        entry_1_r = f'{randint(0, 10)} {randint(0, 10)}'
+        entry_2_r = f'{ran_choice(characters)} {ran_choice(characters)}'
+        self.y_entry.insert(END, entry_1_r)
+        self.bar_name_entry.insert(END, entry_2_r)
 
     def make_bar(self):
         x_values = make_array(self.bar_name_entry)
@@ -1194,18 +1229,14 @@ class BarMaker(customtkinter.CTk):
 
 
 # graph maker window creations
-class GraphMaker(customtkinter.CTk):
+class GraphMaker(BasePlotMaker):
 
     def __init__(self):
-        super().__init__()
+        super().__init__('Egon graph maker')
         # customtkinter.set_appearance_mode('dark')
         # customtkinter.set_default_color_theme('dark-blue')
         # root = customtkinter.CTk()
 
-        # create window
-        self.title('Egon graph maker')
-        if not (resize_v):
-            self.resizable(False, False)
         # variables
         self.marker_var = customtkinter.StringVar()
         self.marker_v = ['o', '*', '.', ',', 'x', 'X', '+', 'P', 's', 'D', 'd', 'p', 'H', 'h', 'v', '^', '<', '>', '1',
@@ -1219,118 +1250,120 @@ class GraphMaker(customtkinter.CTk):
         # make ui components
         title = customtkinter.CTkLabel(self, text='Graphical user interface for Graphs',
                                        font=main_title)
-        x_title = customtkinter.CTkLabel(self, text='x values:',
-                                         font=sub_title)
-        y_title = customtkinter.CTkLabel(self, text='y values:',
-                                         font=sub_title)
-        self.x_entry = customtkinter.CTkEntry(self)
-        self.y_entry = customtkinter.CTkEntry(self)
-        upload_x = customtkinter.CTkButton(self, text='Upload', command=lambda: upload(self.x_entry))
-        upload_y = customtkinter.CTkButton(self, text='Upload', command=lambda: upload(self.x_entry))
-        graph_button = customtkinter.CTkButton(self, text='Make a graph', command=self.make_graph)
-        styles_title = customtkinter.CTkLabel(self, text='Change styles!',
-                                              font=med_bold_title)
-        marker_title = customtkinter.CTkLabel(self, text='Choose marker',
-                                              font=sub_title)
-        self.marker_select = customtkinter.CTkComboBox(self, state='readonly', variable=self.marker_var,
-                                                  values=self.marker_v)
-        line_style_title = customtkinter.CTkLabel(self, text='Choose line style',
-                                                  font=sub_title)
-        self.line_select_style = customtkinter.CTkComboBox(self, state='readonly', variable=self.line_var, values=self.line_v)
-        sizes_title = customtkinter.CTkLabel(self, text='Change sizes!',
-                                             font=med_bold_title)
-        dot_title = customtkinter.CTkLabel(self, text='Choose dot size',
-                                           font=sub_title)
-        self.dot_select = customtkinter.CTkEntry(self)
-        line_title = customtkinter.CTkLabel(self, text='Choose line size',
-                                            font=sub_title)
-        self.line_select_entry = customtkinter.CTkEntry(self)
-        titles_title = customtkinter.CTkLabel(self, text='Change titles!',
-                                              font=med_bold_title)
-        main_title_ = customtkinter.CTkLabel(self, text='Write main title',
-                                             font=sub_title)
-        self.main_title_entry = customtkinter.CTkEntry(self)
-        x_title_ = customtkinter.CTkLabel(self, text='Write x-label title',
-                                          font=sub_title)
-        self.x_title_entry = customtkinter.CTkEntry(self)
-        y_title_ = customtkinter.CTkLabel(self, text='Write y-label title',
-                                          font=sub_title)
-        self.y_title_entry = customtkinter.CTkEntry(self)
-        grid_title = customtkinter.CTkLabel(self, text='Change grid modes!',
-                                            font=med_bold_title)
-        x_grid = customtkinter.CTkRadioButton(self, text='x', variable=self.i, value=1)
-        y_grid = customtkinter.CTkRadioButton(self, text='y', variable=self.i, value=2)
-        both_grid = customtkinter.CTkRadioButton(self, text='Both', variable=self.i, value=3)
-        inf_line_title = customtkinter.CTkLabel(self, text='Make an infinite line!',
-                                                font=med_bold_title)
-        inf_line_x_title = customtkinter.CTkLabel(self, text='Write value',
-                                                  font=sub_title)
-        inf_line_y_title = customtkinter.CTkLabel(self, text='select mode',
-                                                  font=sub_title)
-        # inf_line_slope_t = customtkinter.CTkLabel(self, text='Write slope value',
-        # font=sub_title)
-        self.inf_line_value = customtkinter.CTkEntry(self)
+        title.pack(pady=10)
+
+        tabview = customtkinter.CTkTabview(self)
+        tabview.pack(padx=5, pady=5, fill='both', expand=True)
+
+        data_tab = tabview.add('Data')
+        style_tab = tabview.add('Style')
+        titles_tab = tabview.add('Titles & Grid')
+        advanced_tab = tabview.add('Advanced')
+
+        # --- Data Tab ---
+        data_tab.grid_columnconfigure(0, weight=1)
+        data_tab.grid_columnconfigure(1, weight=1)
+        x_title = customtkinter.CTkLabel(data_tab, text='x values:', font=sub_title)
+        y_title = customtkinter.CTkLabel(data_tab, text='y values:', font=sub_title)
+        self.x_entry = customtkinter.CTkEntry(data_tab)
+        self.y_entry = customtkinter.CTkEntry(data_tab)
+        upload_button = customtkinter.CTkButton(data_tab, text='Upload Data',
+                                                command=lambda: ask_for_file([self.x_entry, self.y_entry]))
+
+        x_title.grid(row=0, column=0, padx=5, pady=2, sticky='ew')
+        self.x_entry.grid(row=1, column=0, padx=5, pady=2, sticky='ew')
+        y_title.grid(row=0, column=1, padx=5, pady=2, sticky='ew')
+        self.y_entry.grid(row=1, column=1, padx=5, pady=2, sticky='ew')
+        upload_button.grid(row=2, column=0, columnspan=2, pady=10)
+
+        # --- Style Tab ---
+        style_tab.grid_columnconfigure(0, weight=1)
+        style_tab.grid_columnconfigure(1, weight=1)
+        styles_title = customtkinter.CTkLabel(style_tab, text='Change styles!', font=med_bold_title)
+        marker_title = customtkinter.CTkLabel(style_tab, text='Choose marker', font=sub_title)
+        self.marker_select = customtkinter.CTkComboBox(style_tab, state='readonly', variable=self.marker_var,
+                                                       values=self.marker_v)
+        line_style_title = customtkinter.CTkLabel(style_tab, text='Choose line style', font=sub_title)
+        self.line_select_style = customtkinter.CTkComboBox(style_tab, state='readonly', variable=self.line_var,
+                                                           values=self.line_v)
+
+        sizes_title = customtkinter.CTkLabel(style_tab, text='Change sizes!', font=med_bold_title)
+        dot_title = customtkinter.CTkLabel(style_tab, text='Choose dot size', font=sub_title)
+        self.dot_select = customtkinter.CTkEntry(style_tab)
+        line_title = customtkinter.CTkLabel(style_tab, text='Choose line size', font=sub_title)
+        self.line_select_entry = customtkinter.CTkEntry(style_tab)
+
+        styles_title.grid(row=0, column=0, columnspan=2, pady=5, sticky='n')
+        marker_title.grid(row=1, column=0, padx=5, pady=2)
+        self.marker_select.grid(row=2, column=0, padx=5, pady=2, sticky='ew')
+        line_style_title.grid(row=1, column=1, padx=5, pady=2)
+        self.line_select_style.grid(row=2, column=1, padx=5, pady=2, sticky='ew')
+        sizes_title.grid(row=3, column=0, columnspan=2, pady=5)
+        dot_title.grid(row=4, column=0, padx=5, pady=2)
+        self.dot_select.grid(row=5, column=0, padx=5, pady=2, sticky='ew')
+        line_title.grid(row=4, column=1, padx=5, pady=2)
+        self.line_select_entry.grid(row=5, column=1, padx=5, pady=2, sticky='ew')
+
+        # --- Titles & Grid Tab ---
+        titles_tab.grid_columnconfigure(0, weight=1)
+        titles_tab.grid_columnconfigure(1, weight=1)
+        titles_tab.grid_columnconfigure(2, weight=1)
+        titles_title = customtkinter.CTkLabel(titles_tab, text='Change titles!', font=med_bold_title)
+        main_title_ = customtkinter.CTkLabel(titles_tab, text='Write main title', font=sub_title)
+        self.main_title_entry = customtkinter.CTkEntry(titles_tab)
+        x_title_ = customtkinter.CTkLabel(titles_tab, text='Write x-label title', font=sub_title)
+        self.x_title_entry = customtkinter.CTkEntry(titles_tab)
+        y_title_ = customtkinter.CTkLabel(titles_tab, text='Write y-label title', font=sub_title)
+        self.y_title_entry = customtkinter.CTkEntry(titles_tab)
+
+        grid_title = customtkinter.CTkLabel(titles_tab, text='Change grid modes!', font=med_bold_title)
+        x_grid = customtkinter.CTkRadioButton(titles_tab, text='x', variable=self.i, value=1)
+        y_grid = customtkinter.CTkRadioButton(titles_tab, text='y', variable=self.i, value=2)
+        both_grid = customtkinter.CTkRadioButton(titles_tab, text='Both', variable=self.i, value=3)
+
+        titles_title.grid(row=0, column=1, pady=5)
+        main_title_.grid(row=1, column=1, padx=5, pady=2)
+        self.main_title_entry.grid(row=2, column=1, padx=5, pady=2, sticky='ew')
+        x_title_.grid(row=3, column=0, padx=5, pady=2)
+        self.x_title_entry.grid(row=4, column=0, padx=5, pady=2, sticky='ew')
+        y_title_.grid(row=3, column=2, padx=5, pady=2)
+        self.y_title_entry.grid(row=4, column=2, padx=5, pady=2, sticky='ew')
+
+        grid_title.grid(row=5, column=1, pady=5)
+        x_grid.grid(row=6, column=0, padx=5, pady=2)
+        both_grid.grid(row=6, column=1, padx=5, pady=2)
+        y_grid.grid(row=6, column=2, padx=5, pady=2)
+
+        # --- Advanced Tab ---
+        advanced_tab.grid_columnconfigure(0, weight=1)
+        advanced_tab.grid_columnconfigure(1, weight=1)
+        inf_line_title = customtkinter.CTkLabel(advanced_tab, text='Make an infinite line!', font=med_bold_title)
+        inf_line_x_title = customtkinter.CTkLabel(advanced_tab, text='Write value', font=sub_title)
+        inf_line_y_title = customtkinter.CTkLabel(advanced_tab, text='select mode', font=sub_title)
+        self.inf_line_value = customtkinter.CTkEntry(advanced_tab)
         self.inf_line_v = customtkinter.StringVar()
         self.inf_line_v.set('vertical')
         self.sinf_line = ['vertical', 'horizontal']
-        self.inf_line_mode = customtkinter.CTkComboBox(self, state='readonly', variable=self.inf_line_v,
+        self.inf_line_mode = customtkinter.CTkComboBox(advanced_tab, state='readonly', variable=self.inf_line_v,
                                                        values=self.sinf_line)
-        # self.inf_line_slope = customtkinter.CTkEntry(self)
-        # place ui components
-        title.grid(row=0, column=1)
-        x_title.grid(row=1, column=0, padx=5)
-        y_title.grid(row=1, column=2, padx=5)
-        self.x_entry.grid(row=2, column=0, padx=5)
-        self.y_entry.grid(row=2, column=2, padx=5)
-        upload_x.grid(row=3, column=0, padx=5)
-        upload_y.grid(row=3, column=2, padx=5)
-        styles_title.grid(row=4, column=1)
-        marker_title.grid(row=5, column=0, padx=5)
-        line_style_title.grid(row=5, column=2, padx=5)
-        self.marker_select.grid(row=6, column=0, padx=5)
-        self.line_select_style.grid(row=6, column=2, padx=5)
-        sizes_title.grid(row=7, column=1)
-        dot_title.grid(row=8, column=0, padx=5)
-        line_title.grid(row=8, column=2, padx=5)
-        self.dot_select.grid(row=9, column=0, padx=5)
-        self.line_select_entry.grid(row=9, column=2, padx=5)
-        titles_title.grid(row=10, column=1)
-        main_title_.grid(row=11, column=1)
-        x_title_.grid(row=11, column=0, padx=5)
-        y_title_.grid(row=11, column=2, padx=5)
-        self.x_title_entry.grid(row=12, column=0, padx=5)
-        self.main_title_entry.grid(row=12, column=1)
-        self.y_title_entry.grid(row=12, column=2, padx=5)
-        grid_title.grid(row=13, column=1)
-        x_grid.grid(row=14, column=0, padx=5)
-        both_grid.grid(row=14, column=1)
-        y_grid.grid(row=14, column=2, padx=5)
-        inf_line_title.grid(row=15, column=1)
-        inf_line_x_title.grid(row=16, column=0, padx=5)
-        # inf_line_slope_t.grid(row=15, column=1)
-        inf_line_y_title.grid(row=16, column=2, padx=5)
-        self.inf_line_value.grid(row=17, column=0, padx=5)
-        # self.inf_line_slope.grid(row=16, column=1)
-        self.inf_line_mode.grid(row=17, column=2, padx=5)
-        graph_button.grid(row=18, column=1, pady=10)
 
-        if middle_v:
-            self.update()
-            place_w_middle(self)
+        inf_line_title.grid(row=0, column=0, columnspan=2, pady=5)
+        inf_line_x_title.grid(row=1, column=0, padx=5, pady=2)
+        self.inf_line_value.grid(row=2, column=0, padx=5, pady=2, sticky='ew')
+        inf_line_y_title.grid(row=1, column=1, padx=5, pady=2)
+        self.inf_line_mode.grid(row=2, column=1, padx=5, pady=2, sticky='ew')
 
-        if fun_numbers_v:
-            entry_1_r = f'{randint(0, 10)} {randint(0, 10)} {randint(0, 10)}'
-            entry_2_r = f'{randint(0, 10)} {randint(0, 10)} {randint(0, 10)}'
-            self.x_entry.insert(END, entry_1_r)
-            self.y_entry.insert(END, entry_2_r)
+        # --- Make Graph Button ---
+        graph_button = customtkinter.CTkButton(self, text='Make a graph', command=self.make_graph)
+        graph_button.pack(pady=10)
 
-        self.protocol('WM_DELETE_WINDOW', self.close_this)
-        self.grpahmaker_root = self
-        opened_programs.append(self.grpahmaker_root)
+        self.finalize_setup()
 
-    def close_this(self):
-        opened_programs.remove(self.grpahmaker_root)
-        self.destroy()
+    def _setup_fun_numbers(self):
+        entry_1_r = f'{randint(0, 10)} {randint(0, 10)} {randint(0, 10)}'
+        entry_2_r = f'{randint(0, 10)} {randint(0, 10)} {randint(0, 10)}'
+        self.x_entry.insert(END, entry_1_r)
+        self.y_entry.insert(END, entry_2_r)
 
     # create the graph:
     def make_graph(self):
@@ -1352,7 +1385,8 @@ class GraphMaker(customtkinter.CTk):
                     for line in self.infv1.split(' '):
                         plt.axhline(y=line, linestyle='--')
 
-            plt.plot(x_values, y_values, marker=change_marker(self.marker_select.get(), 'graph'), ms=self.change_dot_size(),
+            plt.plot(x_values, y_values, marker=change_marker(self.marker_select.get(), 'graph'),
+                     ms=self.change_dot_size(),
                      linewidth=self.change_line_size(), linestyle=change_line(self.line_select_style.get()))
             # titles set
             if title_condition(self.x_title_entry):
@@ -1368,7 +1402,6 @@ class GraphMaker(customtkinter.CTk):
         except BaseException as e:
             messagebox.showerror('error', 'an error occurred')
             print(e)
-
 
     def change_dot_size(self):
         self.chosen_dot_size = self.dot_select.get()
@@ -1407,8 +1440,6 @@ class GraphMaker(customtkinter.CTk):
             return self.inf_line_mode.get()
         else:
             return False
-
-
 
 
 if __name__ == '__main__':
