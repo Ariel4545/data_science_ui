@@ -1,9 +1,59 @@
 ![egon_ds_crop](https://user-images.githubusercontent.com/95249974/199279020-5dbbc237-185f-432a-b087-2036a822c151.png)
 
-## Projects
-1. Egon Visualization - an GUI for matplotlib visualization options - like graph, scatter plot etc.  
-2. (Egon) NumpyGui - a GUI for many fields in numpy that require 1-D arrays , and a little bit of Scipy  
-3. (Egon) PandasGui - a GUI for simple pandas operations with data frame 
+# EgonDS - Data Science UI Suite
 
-## Tested on
+EgonDS is a collection of Python-based GUI applications designed to simplify data science workflows. It provides intuitive interfaces for data visualization, NumPy operations, and Pandas DataFrame manipulation, making these powerful libraries accessible without writing extensive code.
+
+## 🚀 Projects
+
+### 1. Egon Visualization
+
+A comprehensive GUI for creating various Matplotlib visualizations.
+*   **Plot Types**: Graph, Histogram, Bar, Pie, Stem, Scatter Plot, ImShow, Contour, Error Bar, Box Plot.
+*   **Features**:
+    *   Import data directly from CSV files.
+    *   Customize markers, lines, colors, and grid styles.
+    *   Adjust transparency and font sizes.
+    *   Theme selection (Dracula/Light).
+
+### 2. (Egon) NumpyGui
+
+A modern GUI for performing NumPy and SciPy operations.
+*   **Core Functions**: Arithmetic, Rounding, Trigonometry, Statistics, and Calculus.
+*   **Advanced Features**:
+    *   **Inline Controls**: Generate random numbers, create linspaces, and filter data directly within the UI.
+    *   **Calculator Grid**: Visual interface for common mathematical operations.
+    *   **State Management**: Persists your theme (Light/Dark) and view preferences.
+    *   **Dual Interface**: Choose between a side tab view or a traditional top menu.
+
+### 3. (Egon) PandasGui
+
+A powerful tool for viewing, cleaning, and analyzing Pandas DataFrames.
+*   **Data Management**: Open and save CSV, JSON, and Excel files.
+*   **Cleaning**: Remove empty rows/duplicates, drop columns, and replace values.
+*   **Analysis**: View detailed statistics (Mean, Median, Mode, etc.) and dataset descriptions.
+*   **Visualization**: Tabular view of your data.
+
+## 🛠️ Installation
+
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/Ariel4545/data_science_ui.git
+    cd data_science_ui
+    ```
+
+2.  **Install dependencies:**
+    ```bash
+    pip install -r requirements.txt
+    ```
+    *Dependencies include: `pandas`, `numpy`, `customtkinter`, `scipy`, `matplotlib`, `pyperclip`*
+
+
+## 🖥️ Tested On
 <img src="https://img.shields.io/badge/Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white" />
+
+## 🤝 Contributing
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## 📄 License
+[MIT License](LICENSE)
