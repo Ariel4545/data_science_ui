@@ -71,6 +71,7 @@ class Window(CTk):
 
     def clear(self):
         self.data.delete(*self.data.get_children())
+        return
 
     def open(self):
         def file_by(via):
@@ -271,53 +272,6 @@ class Window(CTk):
         count_info = self.dataframe.count()
         self.information_pop_msg(count_info, 'count')
 
-    def sum(self):
-        sum_info = self.dataframe.sum()
-        self.information_pop_msg(sum_info, 'sum')
-
-    def min(self):
-        min_info = self.dataframe.min()
-        self.information_pop_msg(min_info, 'min')
-
-    def max(self):
-        max_info = self.dataframe.max()
-        self.information_pop_msg(max_info, 'max')
-
-    def mean(self):
-        mean_info = self.dataframe.mean()
-        self.information_pop_msg(mean_info, 'mean')
-
-    def median(self):
-        median_info = self.dataframe.median()
-        self.information_pop_msg(median_info, 'median')
-
-    def abs(self):
-        try:
-            abs_info = self.dataframe.astype(int).abs()
-            self.information_pop_msg(abs_info, 'abs')
-        except:
-            messagebox.showerror('error', 'enable to convert data frame to integer')
-
-    def pow(self):
-        try:
-            pow_num = tkinter.simpledialog.askinteger('pow', 'please enter the amount of pow')
-            pow_info = self.dataframe.pow(pow_num)
-            self.information_pop_msg(pow_info, 'pow')
-        except:
-            messagebox.showerror('error', 'enable to convert data frame to integer')
-
-    def mode(self):
-        mode_info = self.dataframe.mode()
-        self.information_pop_msg(mode_info, 'mode')
-
-    def nunique(self):
-        nun_info = self.dataframe.nunique()
-        self.information_pop_msg(nun_info, 'nunique')
-
-    def cumsum(self):
-        cumsum_info = self.dataframe.cumsum()
-        self.information_pop_msg(cumsum_info, 'cumsum')
-
     def information_pop_msg(self, result, operation_name):
         result_root = tkinter.Toplevel()
         time = datetime.datetime.now().strftime('%H:%M:%S')
@@ -428,6 +382,269 @@ class Window(CTk):
         themes_title.grid(row=3, column=1)
         dark_mode_button.grid(row=4, column=0)
         light_mode_button.grid(row=4, column=2)
+
+    def _require_data(self) -> bool:
+        """
+        Ensure a DataFrame is loaded before proceeding.
+        Returns True if data is available, otherwise shows an info popup and returns False.
+        """
+        if getattr(self, "dataframe", None) is None:
+            try:
+                self.information_pop_msg("No data loaded", "Please open a data file first.")
+            except Exception:
+                pass
+            return False
+        return True
+
+    def _get_numeric_columns(self):
+        """
+        Returns a list of numeric column names in the current DataFrame.
+        If there are no numeric columns, returns an empty list.
+        """
+        import numpy as _np  # local import to avoid top-level dependency impacts
+        if not self._require_data():
+            return []
+        try:
+            return list(self.dataframe.select_dtypes(include=[_np.number]).columns)
+        except Exception:
+            return []
+
+    def _apply_op(self, op_name: str, fn):
+        """
+        Unified mutation pipeline:
+        - Checks that data is loaded
+        - Executes the provided function (which should mutate or return a new DataFrame)
+        - Assigns back if a new DataFrame is returned
+        - Marks 'changed', increments 'upd_count', and calls update_data() once
+        - Handles and reports errors uniformly
+        """
+        if not self._require_data():
+            return
+        try:
+            result = fn()
+            if result is not None:
+                # allow functional style: return a new df
+                self.dataframe = result
+            # mark changed and update views exactly once
+            self.changed = True
+            self.upd_count += 1
+            try:
+                self.update_data()
+            except Exception as e:
+                # Surface update errors but keep the data change
+                self.information_pop_msg(f"{op_name} - UI update failed", str(e))
+            else:
+                # Optional: lightweight success status (avoid modal spam)
+                pass
+        except Exception as e:
+            try:
+                self.information_pop_msg(f"{op_name} failed", str(e))
+            except Exception:
+                pass
+
+
+    def _apply_numeric_unary(self, op_name: str, series_op):
+        """
+        Apply an element-wise Series -> Series operation to all numeric columns.
+        """
+        if not self._require_data():
+            return
+        cols = self._get_numeric_columns()
+        if not cols:
+            self.information_pop_msg(f"{op_name} - No numeric data", "No numeric columns found to apply operation.")
+            return
+
+        def _runner():
+            df = self.dataframe
+            # Operate only on a view of numeric columns to avoid dtype regressions on other columns
+            for c in cols:
+                # Each column individually to better surface column-specific errors
+                try:
+                    df[c] = series_op(df[c])
+                except Exception as col_err:
+                    # best-effort: continue on others, then raise aggregated info
+                    raise type(col_err)(f"Column '{c}': {col_err}")
+            return df  # in-place change; return for consistency
+
+        self._apply_op(op_name, _runner)
+
+    def _numeric_summary(self, op_name: str, reducer):
+        """
+        Compute a per-column numeric summary without mutating the DataFrame.
+        Shows a popup with the results and stores them on matching attributes when present.
+        """
+        if not self._require_data():
+            return
+
+        import numpy as _np
+        df = self.dataframe
+        num_df = df.select_dtypes(include=[_np.number])
+        if num_df.shape[1] == 0:
+            self.information_pop_msg(f"{op_name} - No numeric data", "No numeric columns found to summarize.")
+            return
+
+        try:
+            # reducer should return a Series indexed by column names
+            result = reducer(num_df)
+        except Exception as e:
+            self.information_pop_msg(f"{op_name} failed", str(e))
+            return
+
+        # Persist on attribute if available (sum_ / min_ / max_ / mean_ / median_)
+        # Store as dict for easier later use; also render nicely for popup.
+        result_dict = {str(k): result[k] for k in result.index}
+        attr_name = {
+            "Sum": "sum_",
+            "Min": "min_",
+            "Max": "max_",
+            "Mean": "mean_",
+            "Median": "median_",
+        }.get(op_name)
+        if attr_name and hasattr(self, attr_name):
+            try:
+                setattr(self, attr_name, result_dict)
+            except Exception:
+                pass
+
+        # Compose a readable message
+        lines = [f"{op_name} per column (numeric only):"]
+        for k in result.index:
+            try:
+                v = result[k]
+                # Compact formatting for floats
+                if isinstance(v, float):
+                    lines.append(f"- {k}: {v:.6g}")
+                else:
+                    lines.append(f"- {k}: {v}")
+            except Exception:
+                lines.append(f"- {k}: <unavailable>")
+        msg = "\n".join(lines)
+        self.information_pop_msg(f"{op_name} result", msg)
+
+    def sum(self):
+        """
+        Show column-wise sum for numeric columns without mutating the DataFrame.
+        Previous behavior that could coerce/mutate is replaced with a safe summary.
+        """
+        self._numeric_summary("Sum", lambda df: df.sum(numeric_only=True))
+
+    def min(self):
+        """
+        Show column-wise min for numeric columns without mutating the DataFrame.
+        """
+        self._numeric_summary("Min", lambda df: df.min(numeric_only=True))
+
+    def max(self):
+        """
+        Show column-wise max for numeric columns without mutating the DataFrame.
+        """
+        self._numeric_summary("Max", lambda df: df.max(numeric_only=True))
+
+    def mean(self):
+        """
+        Show column-wise mean for numeric columns without mutating the DataFrame.
+        """
+        self._numeric_summary("Mean", lambda df: df.mean(numeric_only=True))
+
+    def median(self):
+        """
+        Show column-wise median for numeric columns without mutating the DataFrame.
+        """
+        self._numeric_summary("Median", lambda df: df.median(numeric_only=True))
+
+    def abs(self):
+        """
+        Element-wise absolute value on numeric columns only.
+        """
+        # before: unguarded operation across all columns could raise or coerce incorrectly
+        self._apply_numeric_unary("Absolute", lambda s: s.abs())
+
+    def cumsum(self):
+        """
+        Element-wise cumulative sum on numeric columns only (skip NaN).
+        """
+        self._apply_numeric_unary("Cumulative sum", lambda s: s.cumsum(skipna=True))
+
+    def pow(self):
+        """
+        Element-wise power on numeric columns only.
+        Asks user for exponent.
+        """
+        try:
+            val = simpledialog.askfloat('Power', 'Enter exponent:', initialvalue=2.0)
+            if val is None:
+                return
+            exp = val
+        except Exception:
+            return
+
+        self._apply_numeric_unary(f"Power (**{exp})", lambda s: s.pow(exp))
+
+    def mode(self):
+        """
+        Show column-wise mode for numeric columns without mutating the DataFrame.
+        """
+        # Mode can return multiple rows, so we handle it slightly differently than _numeric_summary
+        if not self._require_data():
+            return
+        
+        import numpy as _np
+        df = self.dataframe
+        num_df = df.select_dtypes(include=[_np.number])
+        if num_df.empty:
+             self.information_pop_msg("Mode - No numeric data", "No numeric columns found.")
+             return
+
+        try:
+            m = num_df.mode()
+            # Format for display
+            self.information_pop_msg("Mode result (numeric)", m.to_string())
+        except Exception as e:
+            self.information_pop_msg("Mode failed", str(e))
+
+    def nunique(self):
+        """
+        Show column-wise unique count for numeric columns.
+        """
+        self._numeric_summary("Nunique", lambda df: df.nunique())
+
+    # ---------- Non-shadowing convenience wrappers (backward compatible) ----------
+
+    def compute_sum(self):
+        """Non-shadowing wrapper around sum()."""
+        return self.sum()
+
+    def compute_min(self):
+        """Non-shadowing wrapper around min()."""
+        return self.min()
+
+    def compute_max(self):
+        """Non-shadowing wrapper around max()."""
+        return self.max()
+
+    def compute_mean(self):
+        """Non-shadowing wrapper around mean()."""
+        return self.mean()
+
+    def compute_median(self):
+        """Non-shadowing wrapper around median()."""
+        return self.median()
+
+    def compute_abs(self):
+        """Non-shadowing wrapper around abs()."""
+        return self.abs()
+
+    def compute_pow(self):
+        """Non-shadowing wrapper around pow()."""
+        return self.pow()
+
+    def compute_mode(self):
+        """Non-shadowing wrapper around mode()."""
+        return self.mode()
+
+    def compute_nunique(self):
+        """Non-shadowing wrapper around nunique()."""
+        return self.nunique()
 
     def on_close(self):
         if self.changed:
