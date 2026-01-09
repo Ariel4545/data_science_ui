@@ -30,9 +30,13 @@ A modern GUI for performing NumPy and SciPy operations.
 
 A powerful tool for viewing, cleaning, and analyzing Pandas DataFrames.
 *   **Data Management**: Open and save CSV, JSON, and Excel files.
-*   **Cleaning**: Remove empty rows/duplicates, drop columns, and replace values.
+*   **History**: Full **Undo/Redo** support for all data modifications.
+*   **Cleaning**: Remove empty rows/duplicates, drop columns, rename columns, and replace values.
 *   **Analysis**: View detailed statistics (Mean, Median, Mode, etc.) and dataset descriptions.
-*   **Visualization**: Tabular view of your data.
+*   **Visualization**: 
+    *   Tabular view of your data with vertical scrolling.
+    *   **Integrated Plotting**: Create Histograms, Scatter, Line, Bar, and Box plots directly from your data.
+*   **Customization**: Switch between a Button Grid or Menu Bar layout; toggle Dark/Light themes.
 
 ## 🛠️ Installation
 
