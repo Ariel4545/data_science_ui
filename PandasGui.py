@@ -4,6 +4,7 @@ import tkinter
 from tkinter import filedialog, messagebox, ttk, simpledialog
 import pandas, numpy, pyperclip, datetime
 import matplotlib.pyplot as plt
+import io
 
 
 class Window(CTk):
@@ -17,6 +18,10 @@ class Window(CTk):
         self.title('PandasGui')
         self.protocol("WM_DELETE_WINDOW", self.on_close)
         self.minsize(340, 430)
+        
+        self.history = []
+        self.history_index = -1
+        
         self.menu()
         self.changed = False
         self.upd_count = 0
@@ -68,6 +73,8 @@ class Window(CTk):
                               width=self.b_width)
 
         self.bind("<Control-o>", self.open), self.bind("<Control-O>", self.open)
+        self.bind('<Control-z>', lambda e: self.undo())
+        self.bind('<Control-y>', lambda e: self.redo())
 
     def clear(self):
         self.data.delete(*self.data.get_children())
@@ -130,7 +137,10 @@ class Window(CTk):
                 self.nunique_.configure(state=ACTIVE), self.cumsum_.configure(state=ACTIVE)
 
                 self.bind('<Control-Key-s>', self.save), self.bind('<Control-Key-S>', self.save)
-
+                
+                self.history = []
+                self.history_index = -1
+                self.add_to_history(self.dataframe)
                 self.update_data()
 
 
@@ -184,19 +194,16 @@ class Window(CTk):
             self.changed = True
 
     def clean_empty(self):
-        self.dataframe.dropna(inplace=True)
-        self.update_data()
+        self._apply_op('Clean Empty', lambda: self.dataframe.dropna())
 
     def clean_duplicates(self):
-        self.dataframe.drop_duplicates(inplace=True)
-        self.update_data()
+        self._apply_op('Clean Duplicates', lambda: self.dataframe.drop_duplicates())
 
     def info(self):
-        # info_root = tkinter.Toplevel()
-        # info_root.title('PandasGui df-info')
-        information = self.dataframe.info()
-        # info_label = CTkLabel(info_root, text=information)
-        # info_label.pack()
+        if not self._require_data(): return
+        buffer = io.StringIO()
+        self.dataframe.info(buf=buffer)
+        self.information_pop_msg(buffer.getvalue(), 'DataFrame Info')
 
     def describe(self):
         des_root = CTkToplevel()
@@ -209,7 +216,8 @@ class Window(CTk):
     def delete(self):
         def enter():
             try:
-                self.dataframe.drop(columns=self.cul.get(), inplace=True)
+                # Use _apply_op to handle history
+                self._apply_op('Drop', lambda: self.dataframe.drop(columns=self.cul.get()))
             except KeyError:
                 tkinter.messagebox.showerror('PandasGui', f'"{self.cul.get()}" was not found')
         drop_root = CTkToplevel()
@@ -226,12 +234,12 @@ class Window(CTk):
         enter_button.grid(row=2, column=1)
 
         #drop_root.resizable(False, False)
-        self.update_data()
+        # self.update_data() # Handled by _apply_op
 
     def replace(self):
         def enter():
             try:
-                self.dataframe.replace(self.old_value.get(), self.new_value.get())
+                self._apply_op('Replace', lambda: self.dataframe.replace(self.old_value.get(), self.new_value.get()))
             except KeyError:
                 tkinter.messagebox.showerror('PandasGui', f'"{self.old_value.get()}" was not found')
 
@@ -251,7 +259,7 @@ class Window(CTk):
     def rename(self):
         def enter():
             try:
-                self.dataframe.rename(columns={self.oldc_value.get() : self.newc_value.get()})
+                self._apply_op('Rename', lambda: self.dataframe.rename(columns={self.oldc_value.get() : self.newc_value.get()}))
             except KeyError:
                 tkinter.messagebox.showerror('PandasGui', f'"{self.oldc_value.get()}" was not found')
 
@@ -289,6 +297,11 @@ class Window(CTk):
         self.menu_.add_cascade(label='File', menu=file_menu)
         file_menu.add_command(label='Open', command=self.open)
         file_menu.add_command(label='Save', command=self.save)
+        
+        edit_menu = tkinter.Menu(self.menu_, tearoff=False)
+        self.menu_.add_cascade(label='Edit', menu=edit_menu)
+        edit_menu.add_command(label='Undo', command=self.undo)
+        edit_menu.add_command(label='Redo', command=self.redo)
 
         statistics_menu = tkinter.Menu(self.menu_, tearoff=False)
         self.menu_.add_cascade(label='Statistics', menu=statistics_menu)
@@ -310,6 +323,14 @@ class Window(CTk):
         cleaning_menu.add_command(label='Clean empty', command=self.clean_empty)
         cleaning_menu.add_command(label='Cleaning duplicates', command=self.clean_duplicates)
         cleaning_menu.add_command(label='Delete', command=self.delete)
+        
+        plotting_menu = tkinter.Menu(self.menu_, tearoff=False)
+        self.menu_.add_cascade(label='Plotting', menu=plotting_menu)
+        plotting_menu.add_command(label='Histogram', command=lambda: self.plot('hist'))
+        plotting_menu.add_command(label='Scatter', command=lambda: self.plot('scatter'))
+        plotting_menu.add_command(label='Line', command=lambda: self.plot('line'))
+        plotting_menu.add_command(label='Bar', command=lambda: self.plot('bar'))
+        plotting_menu.add_command(label='Box', command=lambda: self.plot('box'))
 
         other_menu = tkinter.Menu(self.menu_, tearoff=False)
         self.menu_.add_cascade(label='Other', menu=other_menu)
@@ -408,6 +429,10 @@ class Window(CTk):
             return list(self.dataframe.select_dtypes(include=[_np.number]).columns)
         except Exception:
             return []
+            
+    def _get_columns(self):
+        if not self._require_data(): return []
+        return list(self.dataframe.columns)
 
     def _apply_op(self, op_name: str, fn):
         """
@@ -424,7 +449,16 @@ class Window(CTk):
             result = fn()
             if result is not None:
                 # allow functional style: return a new df
-                self.dataframe = result
+                new_df = result
+            else:
+                # If fn modified in place (which we try to avoid now), assume self.dataframe is new state
+                # But for history, we need to be careful.
+                # Ideally fn returns the new dataframe.
+                new_df = self.dataframe
+
+            self.add_to_history(new_df)
+            self.dataframe = new_df
+            
             # mark changed and update views exactly once
             self.changed = True
             self.upd_count += 1
@@ -455,7 +489,7 @@ class Window(CTk):
             return
 
         def _runner():
-            df = self.dataframe
+            df = self.dataframe.copy()
             # Operate only on a view of numeric columns to avoid dtype regressions on other columns
             for c in cols:
                 # Each column individually to better surface column-specific errors
@@ -607,6 +641,108 @@ class Window(CTk):
         Show column-wise unique count for numeric columns.
         """
         self._numeric_summary("Nunique", lambda df: df.nunique())
+        
+    def add_to_history(self, df):
+        self.history = self.history[:self.history_index + 1]
+        self.history.append(df.copy())
+        self.history_index += 1
+
+    def undo(self):
+        if self.history_index > 0:
+            self.history_index -= 1
+            self.dataframe = self.history[self.history_index].copy()
+            self.update_data()
+            # self.status_bar.configure(text='Undo successful.') # No status bar in l1 yet
+        else:
+            pass
+            # self.status_bar.configure(text='Nothing to undo.')
+
+    def redo(self):
+        if self.history_index < len(self.history) - 1:
+            self.history_index += 1
+            self.dataframe = self.history[self.history_index].copy()
+            self.update_data()
+            # self.status_bar.configure(text='Redo successful.')
+        else:
+            pass
+            # self.status_bar.configure(text='Nothing to redo.')
+            
+    def _ask_column(self, title, columns):
+        dialog = CTkToplevel(self)
+        dialog.title('Select Column')
+        dialog.geometry('300x150')
+        
+        # Make dialog modal
+        dialog.transient(self)
+        dialog.grab_set()
+
+        label = CTkLabel(dialog, text=title)
+        label.pack(pady=10)
+
+        col_var = tkinter.StringVar()
+        combobox = CTkComboBox(dialog, values=columns, variable=col_var)
+        combobox.pack(pady=5, padx=20, fill='x')
+        if columns:
+            combobox.set(columns[0])
+
+        def on_ok():
+            dialog.destroy()
+        
+        ok_button = CTkButton(dialog, text='OK', command=on_ok)
+        ok_button.pack(pady=10)
+
+        self.wait_window(dialog)
+        return col_var.get()
+        
+    def plot(self, kind):
+        if not self._require_data(): return
+        numeric_cols = self._get_numeric_columns()
+        all_cols = self._get_columns()
+
+        if kind in ['hist', 'box']:
+            if not numeric_cols:
+                messagebox.showinfo('No Numeric Data', f'No numeric columns available for a {kind} plot.')
+                return
+            col = self._ask_column(f'Select column for {kind} plot:', numeric_cols)
+            if not col: return
+            try:
+                plt.figure(f'{kind.title()} Plot of {col}')
+                self.dataframe[col].plot(kind=kind, title=f'{kind.title()} Plot of {col}')
+                plt.xlabel(col)
+                if kind == 'hist': plt.ylabel('Frequency')
+                plt.grid(True)
+                plt.show()
+            except Exception as e:
+                messagebox.showerror('Plotting Error', str(e))
+
+        elif kind in ['line', 'bar']:
+            x_col = self._ask_column('Select column for X-axis:', all_cols)
+            if not x_col: return
+            y_col = self._ask_column('Select column for Y-axis:', numeric_cols)
+            if not y_col: return
+            try:
+                plt.figure(f'{kind.title()} Plot: {y_col} vs {x_col}')
+                self.dataframe.plot(kind=kind, x=x_col, y=y_col, title=f'{y_col} vs {x_col}')
+                plt.grid(True)
+                plt.show()
+            except Exception as e:
+                messagebox.showerror('Plotting Error', str(e))
+
+        elif kind == 'scatter':
+            if len(numeric_cols) < 2:
+                messagebox.showinfo('Not Enough Data', 'You need at least two numeric columns for a scatter plot.')
+                return
+            x_col = self._ask_column('Select column for X-axis:', numeric_cols)
+            if not x_col: return
+            y_col = self._ask_column('Select column for Y-axis:', numeric_cols)
+            if not y_col: return
+            try:
+                plt.figure(f'Scatter: {y_col} vs {x_col}')
+                self.dataframe.plot(kind='scatter', x=x_col, y=y_col, title=f'{y_col} vs {x_col}')
+                plt.grid(True)
+                plt.show()
+            except Exception as e:
+                messagebox.showerror('Plotting Error', str(e))
 
     # ---------- Non-shadowing convenience wrappers (backward compatible) ----------
 
