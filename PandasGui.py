@@ -6,22 +6,35 @@ import pandas, numpy, pyperclip, datetime
 import matplotlib.pyplot as plt
 import io
 
+# Try importing optional dependencies for stats/ML
+try:
+    from scipy.stats import ttest_ind, chi2_contingency
+except ImportError:
+    ttest_ind, chi2_contingency = None, None
+
+try:
+    from sklearn.linear_model import LinearRegression
+    from sklearn.preprocessing import StandardScaler, OneHotEncoder
+except ImportError:
+    LinearRegression, StandardScaler, OneHotEncoder = None, None, None
+
 
 class Window(CTk):
     app_width = 340
     app_height = 500
     b_height = 3
     b_width = 3
+
     def __init__(self):
         super().__init__()
         self.geometry(f'{self.app_width}x{self.app_height}')
         self.title('PandasGui')
         self.protocol("WM_DELETE_WINDOW", self.on_close)
         self.minsize(340, 430)
-        
+
         self.history = []
         self.history_index = -1
-        
+
         self.menu()
         self.changed = False
         self.upd_count = 0
@@ -65,12 +78,15 @@ class Window(CTk):
                               width=self.b_width)
         self.max_ = CTkButton(self.buttons_frame, text='Max', command=self.max, state=DISABLED, height=self.b_height,
                               width=self.b_width)
-        self.rename_ = CTkButton(self.buttons_frame, text='Rename', command=self.rename, state=DISABLED, height=self.b_height,
-                              width=self.b_width)
-        self.nunique_ = CTkButton(self.buttons_frame, text='Nunique', command=self.nunique, state=DISABLED, height=self.b_height,
-                              width=self.b_width)
-        self.cumsum_ = CTkButton(self.buttons_frame, text='Cumsum', command=self.cumsum, state=DISABLED, height=self.b_height,
-                              width=self.b_width)
+        self.rename_ = CTkButton(self.buttons_frame, text='Rename', command=self.rename, state=DISABLED,
+                                 height=self.b_height,
+                                 width=self.b_width)
+        self.nunique_ = CTkButton(self.buttons_frame, text='Nunique', command=self.nunique, state=DISABLED,
+                                  height=self.b_height,
+                                  width=self.b_width)
+        self.cumsum_ = CTkButton(self.buttons_frame, text='Cumsum', command=self.cumsum, state=DISABLED,
+                                 height=self.b_height,
+                                 width=self.b_width)
 
         self.bind("<Control-o>", self.open), self.bind("<Control-O>", self.open)
         self.bind('<Control-z>', lambda e: self.undo())
@@ -89,6 +105,7 @@ class Window(CTk):
                 fb = 'link'
             question_box.destroy()
             open_()
+
         question_box = CTkToplevel()
         question_box.title('File by')
         question_title = CTkLabel(question_box, text='What is the preferred way to open the file by')
@@ -101,7 +118,7 @@ class Window(CTk):
         def open_():
             if fb == 'file':
                 self.file_name = filedialog.askopenfilename(filetypes=(('CSV Files', '*.csv'), ('JSON FILES', '*.json'),
-                                                                   ('EXCEL Files', '*.xlsx')))
+                                                                       ('EXCEL Files', '*.xlsx')))
             else:
                 self.file_name = simpledialog.askstring('File link', 'enter the file link')
             # suffix = re.sub((r"(?:csv)$"))
@@ -137,12 +154,11 @@ class Window(CTk):
                 self.nunique_.configure(state=ACTIVE), self.cumsum_.configure(state=ACTIVE)
 
                 self.bind('<Control-Key-s>', self.save), self.bind('<Control-Key-S>', self.save)
-                
+
                 self.history = []
                 self.history_index = -1
                 self.add_to_history(self.dataframe)
                 self.update_data()
-
 
     def save(self):
         if not (messagebox.askyesno('PandasGui', 'Would you like to replace the old data frame?')):
@@ -167,7 +183,6 @@ class Window(CTk):
         # self.data.insert('1.0', self.dataframe)
 
         self.data = ttk.Treeview(self, yscrollcommand=self.scroll.set)
-
 
         self.clear()
 
@@ -211,7 +226,7 @@ class Window(CTk):
         self.description = self.dataframe.describe()
         des = CTkLabel(des_root, text=self.description)
         des.pack(expand=True)
-        #des_root.resizable(False, False)
+        # des_root.resizable(False, False)
 
     def delete(self):
         def enter():
@@ -220,6 +235,7 @@ class Window(CTk):
                 self._apply_op('Drop', lambda: self.dataframe.drop(columns=self.cul.get()))
             except KeyError:
                 tkinter.messagebox.showerror('PandasGui', f'"{self.cul.get()}" was not found')
+
         drop_root = CTkToplevel()
         drop_root.title('PandasGui - drop')
         cul_title = CTkLabel(drop_root, text='Column')
@@ -233,7 +249,7 @@ class Window(CTk):
         self.row.grid(row=1, column=2)
         enter_button.grid(row=2, column=1)
 
-        #drop_root.resizable(False, False)
+        # drop_root.resizable(False, False)
         # self.update_data() # Handled by _apply_op
 
     def replace(self):
@@ -259,7 +275,8 @@ class Window(CTk):
     def rename(self):
         def enter():
             try:
-                self._apply_op('Rename', lambda: self.dataframe.rename(columns={self.oldc_value.get() : self.newc_value.get()}))
+                self._apply_op('Rename',
+                               lambda: self.dataframe.rename(columns={self.oldc_value.get(): self.newc_value.get()}))
             except KeyError:
                 tkinter.messagebox.showerror('PandasGui', f'"{self.oldc_value.get()}" was not found')
 
@@ -297,7 +314,7 @@ class Window(CTk):
         self.menu_.add_cascade(label='File', menu=file_menu)
         file_menu.add_command(label='Open', command=self.open)
         file_menu.add_command(label='Save', command=self.save)
-        
+
         edit_menu = tkinter.Menu(self.menu_, tearoff=False)
         self.menu_.add_cascade(label='Edit', menu=edit_menu)
         edit_menu.add_command(label='Undo', command=self.undo)
@@ -311,6 +328,8 @@ class Window(CTk):
         statistics_menu.add_command(label='Min', command=self.min)
         statistics_menu.add_command(label='Max', command=self.max)
         statistics_menu.add_command(label='Cumsum', command=self.cumsum)
+        statistics_menu.add_command(label='T-Test', command=self.perform_ttest)
+        statistics_menu.add_command(label='Chi-Squared', command=self.perform_chi2_test)
 
         arithmetic_menu = tkinter.Menu(self.menu_, tearoff=False)
         self.menu_.add_cascade(label='Arithmetics', menu=arithmetic_menu)
@@ -323,7 +342,10 @@ class Window(CTk):
         cleaning_menu.add_command(label='Clean empty', command=self.clean_empty)
         cleaning_menu.add_command(label='Cleaning duplicates', command=self.clean_duplicates)
         cleaning_menu.add_command(label='Delete', command=self.delete)
-        
+        cleaning_menu.add_command(label='Fill NA', command=self.fill_na)
+        cleaning_menu.add_command(label='One-Hot Encode', command=self.one_hot_encode)
+        cleaning_menu.add_command(label='Scale Data', command=self.scale_data)
+
         plotting_menu = tkinter.Menu(self.menu_, tearoff=False)
         self.menu_.add_cascade(label='Plotting', menu=plotting_menu)
         plotting_menu.add_command(label='Histogram', command=lambda: self.plot('hist'))
@@ -331,6 +353,10 @@ class Window(CTk):
         plotting_menu.add_command(label='Line', command=lambda: self.plot('line'))
         plotting_menu.add_command(label='Bar', command=lambda: self.plot('bar'))
         plotting_menu.add_command(label='Box', command=lambda: self.plot('box'))
+
+        ml_menu = tkinter.Menu(self.menu_, tearoff=False)
+        self.menu_.add_cascade(label='ML', menu=ml_menu)
+        ml_menu.add_command(label='Linear Regression', command=self.linear_regression)
 
         other_menu = tkinter.Menu(self.menu_, tearoff=False)
         self.menu_.add_cascade(label='Other', menu=other_menu)
@@ -429,9 +455,11 @@ class Window(CTk):
             return list(self.dataframe.select_dtypes(include=[_np.number]).columns)
         except Exception:
             return []
-            
-    def _get_columns(self):
+
+    def _get_columns(self, string_only=False):
         if not self._require_data(): return []
+        if string_only:
+            return list(self.dataframe.select_dtypes(include=['object']).columns)
         return list(self.dataframe.columns)
 
     def _apply_op(self, op_name: str, fn):
@@ -458,7 +486,7 @@ class Window(CTk):
 
             self.add_to_history(new_df)
             self.dataframe = new_df
-            
+
             # mark changed and update views exactly once
             self.changed = True
             self.upd_count += 1
@@ -475,7 +503,6 @@ class Window(CTk):
                 self.information_pop_msg(f"{op_name} failed", str(e))
             except Exception:
                 pass
-
 
     def _apply_numeric_unary(self, op_name: str, series_op):
         """
@@ -621,13 +648,13 @@ class Window(CTk):
         # Mode can return multiple rows, so we handle it slightly differently than _numeric_summary
         if not self._require_data():
             return
-        
+
         import numpy as _np
         df = self.dataframe
         num_df = df.select_dtypes(include=[_np.number])
         if num_df.empty:
-             self.information_pop_msg("Mode - No numeric data", "No numeric columns found.")
-             return
+            self.information_pop_msg("Mode - No numeric data", "No numeric columns found.")
+            return
 
         try:
             m = num_df.mode()
@@ -641,7 +668,7 @@ class Window(CTk):
         Show column-wise unique count for numeric columns.
         """
         self._numeric_summary("Nunique", lambda df: df.nunique())
-        
+
     def add_to_history(self, df):
         self.history = self.history[:self.history_index + 1]
         self.history.append(df.copy())
@@ -666,12 +693,12 @@ class Window(CTk):
         else:
             pass
             # self.status_bar.configure(text='Nothing to redo.')
-            
+
     def _ask_column(self, title, columns):
         dialog = CTkToplevel(self)
         dialog.title('Select Column')
         dialog.geometry('300x150')
-        
+
         # Make dialog modal
         dialog.transient(self)
         dialog.grab_set()
@@ -687,13 +714,13 @@ class Window(CTk):
 
         def on_ok():
             dialog.destroy()
-        
+
         ok_button = CTkButton(dialog, text='OK', command=on_ok)
         ok_button.pack(pady=10)
 
         self.wait_window(dialog)
         return col_var.get()
-        
+
     def plot(self, kind):
         if not self._require_data(): return
         numeric_cols = self._get_numeric_columns()
@@ -743,6 +770,99 @@ class Window(CTk):
                 plt.show()
             except Exception as e:
                 messagebox.showerror('Plotting Error', str(e))
+
+    # --- New Features from l2 ---
+
+    def fill_na(self):
+        val = simpledialog.askstring('Fill NA', 'Enter value (or mean/median/mode):', parent=self)
+        if val:
+            # Check for special keywords
+            if val.lower() == 'mean':
+                self._apply_op('Fill NA (Mean)', lambda: self.dataframe.fillna(self.dataframe.mean(numeric_only=True)))
+                return
+            elif val.lower() == 'median':
+                self._apply_op('Fill NA (Median)',
+                               lambda: self.dataframe.fillna(self.dataframe.median(numeric_only=True)))
+                return
+            elif val.lower() == 'mode':
+                # Mode returns a DataFrame, take the first row
+                self._apply_op('Fill NA (Mode)', lambda: self.dataframe.fillna(self.dataframe.mode().iloc[0]))
+                return
+
+            try:
+                val = float(val)
+            except:
+                pass
+            self._apply_op('Fill NA', lambda: self.dataframe.fillna(val))
+
+    def one_hot_encode(self):
+        col = self._ask_column('Select column:', self._get_columns(string_only=True))
+        if col:
+            # Safety check for high cardinality
+            if self.dataframe[col].nunique() > 20:
+                if not messagebox.askyesno('High Cardinality',
+                                           f'Column "{col}" has {self.dataframe[col].nunique()} unique values.\nThis will create many columns. Continue?'):
+                    return
+
+            self._apply_op(f'One-hot {col}', lambda: pandas.concat(
+                [self.dataframe.drop(col, axis=1), pandas.get_dummies(self.dataframe[col], prefix=col)], axis=1))
+
+    def scale_data(self):
+        if not StandardScaler:
+            messagebox.showerror('Error', 'Sklearn not installed')
+            return
+        cols = self._get_numeric_columns()
+        if cols:
+            def _runner():
+                df = self.dataframe.copy()
+                df[cols] = StandardScaler().fit_transform(df[cols])
+                return df
+
+            self._apply_op('Scale Data', _runner)
+
+    def perform_ttest(self):
+        if not ttest_ind:
+            messagebox.showerror('Error', 'Scipy not installed')
+            return
+        c1 = self._ask_column('Col 1:', self._get_numeric_columns())
+        c2 = self._ask_column('Col 2:', self._get_numeric_columns())
+        if c1 and c2:
+            s, p = ttest_ind(self.dataframe[c1], self.dataframe[c2], nan_policy='omit')
+            self.information_pop_msg(f'Stat: {s}, P-value: {p}', 'T-Test')
+
+    def perform_chi2_test(self):
+        if not chi2_contingency:
+            messagebox.showerror('Error', 'Scipy not installed')
+            return
+        c1 = self._ask_column('Col 1:', self._get_columns(string_only=True))
+        c2 = self._ask_column('Col 2:', self._get_columns(string_only=True))
+        if c1 and c2:
+            tab = pandas.crosstab(self.dataframe[c1], self.dataframe[c2])
+            chi2, p, dof, ex = chi2_contingency(tab)
+            self.information_pop_msg(f'Chi2: {chi2}, P: {p}', 'Chi2 Test')
+
+    def linear_regression(self):
+        if not LinearRegression:
+            messagebox.showerror('Error', 'Sklearn not installed')
+            return
+        x_col = self._ask_column('X:', self._get_numeric_columns())
+        y_col = self._ask_column('Y:', self._get_numeric_columns())
+        if x_col and y_col:
+            try:
+                # Drop NaNs from both columns simultaneously to keep alignment
+                data = self.dataframe[[x_col, y_col]].dropna()
+                if data.empty:
+                    raise ValueError("No valid data points after dropping NaNs")
+
+                X = data[[x_col]]
+                y = data[y_col]
+
+                model = LinearRegression().fit(X, y)
+                self.information_pop_msg(
+                    f'Coef: {model.coef_[0]:.4f}, Intercept: {model.intercept_:.4f}\nR2: {model.score(X, y):.4f}',
+                    'Linear Regression')
+            except Exception as e:
+                messagebox.showerror('Error', str(e))
 
     # ---------- Non-shadowing convenience wrappers (backward compatible) ----------
 
