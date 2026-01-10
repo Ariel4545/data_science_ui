@@ -31,8 +31,14 @@ A modern GUI for performing NumPy and SciPy operations.
 A powerful tool for viewing, cleaning, and analyzing Pandas DataFrames.
 *   **Data Management**: Open and save CSV, JSON, and Excel files.
 *   **History**: Full **Undo/Redo** support for all data modifications.
-*   **Cleaning**: Remove empty rows/duplicates, drop columns, rename columns, and replace values.
-*   **Analysis**: View detailed statistics (Mean, Median, Mode, etc.) and dataset descriptions.
+*   **Cleaning**: 
+    *   Remove empty rows/duplicates, drop columns, rename columns, and replace values.
+    *   **Smart Fill NA**: Auto-fill missing data using Mean, Median, or Mode.
+    *   **One-Hot Encoding**: Convert categorical data for ML readiness.
+*   **Analysis**: 
+    *   **Statistics**: Detailed stats (Mean, Median, Mode, etc.) and dataset descriptions.
+    *   **Hypothesis Testing**: Perform T-Tests and Chi-Squared tests.
+    *   **Machine Learning**: Run simple Linear Regression models directly in the app.
 *   **Visualization**: 
     *   Tabular view of your data with vertical scrolling.
     *   **Integrated Plotting**: Create Histograms, Scatter, Line, Bar, and Box plots directly from your data.
@@ -50,7 +56,7 @@ A powerful tool for viewing, cleaning, and analyzing Pandas DataFrames.
     ```bash
     pip install -r requirements.txt
     ```
-    *Dependencies include: `pandas`, `numpy`, `customtkinter`, `scipy`, `matplotlib`, `pyperclip`*
+    *Dependencies include: `pandas`, `numpy`, `customtkinter`, `scipy`, `matplotlib`, `pyperclip`, `scikit-learn`*
 
 
 ## 🖥️ Tested On
