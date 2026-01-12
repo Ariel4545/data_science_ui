@@ -21,10 +21,12 @@ A comprehensive GUI for creating various Matplotlib visualizations.
 A modern GUI for performing NumPy and SciPy operations.
 *   **Core Functions**: Arithmetic, Rounding, Trigonometry, Statistics, and Calculus.
 *   **Advanced Features**:
+    *   **Matrix Support**: Input multi-line text to automatically create and manipulate **2D Matrices**.
     *   **Inline Controls**: Generate random numbers, create linspaces, and filter data directly within the UI.
     *   **Calculator Grid**: Visual interface for common mathematical operations.
     *   **State Management**: Persists your theme (Light/Dark) and view preferences.
     *   **Dual Interface**: Choose between a side tab view or a traditional top menu.
+    *   **Modern UI**: Consistent Dark/Light theming across all windows and popups, with immediate status feedback and glitch-free theme switching.
 
 ### 3. (Egon) PandasGui
 
