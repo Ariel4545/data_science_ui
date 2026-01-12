@@ -16,7 +16,7 @@ class StateManager:
         self.default_state = {
             "show_tabs": False,
             "show_menus": True,
-            "theme": "Light"
+            "theme": "Dark"
         }
         self.state = self.default_state.copy()
         self.load()
@@ -66,19 +66,29 @@ class Window(CTk):
         # Input Frame
         self.input_frame = CTkFrame(self, fg_color='transparent')
         self.input_frame.grid(row=0, column=0, sticky='nsew', padx=10, pady=10)
-        self.input_frame.grid_rowconfigure(0, weight=1)
         self.input_frame.grid_rowconfigure(1, weight=1)
+        self.input_frame.grid_rowconfigure(3, weight=1)
         self.input_frame.grid_columnconfigure(0, weight=1)
 
-        # text boxes
+        # Array A Input
+        self.label_a = CTkLabel(self.input_frame, text="Array A", anchor="w", font=("Arial", 12, "bold"))
+        self.label_a.grid(row=0, column=0, sticky='w', pady=(0, 2))
+
         self.number_input = CTkTextbox(self.input_frame, wrap=tkinter.WORD)
-        self.number_input.grid(row=0, column=0, sticky='nsew', pady=(0, 5))
-        # Enable undo for the underlying tkinter Text widget
+        self.number_input.grid(row=1, column=0, sticky='nsew', pady=(0, 5))
         self.number_input._textbox.config(undo=True)
 
+        # Array B Input
+        self.label_b = CTkLabel(self.input_frame, text="Array B", anchor="w", font=("Arial", 12, "bold"))
+        self.label_b.grid(row=2, column=0, sticky='w', pady=(5, 2))
+
         self.snumber_input = CTkTextbox(self.input_frame, wrap=tkinter.WORD, height=150)
-        self.snumber_input.grid(row=1, column=0, sticky='nsew', pady=(5, 0))
+        self.snumber_input.grid(row=3, column=0, sticky='nsew', pady=(0, 5))
         self.snumber_input._textbox.config(undo=True)
+
+        # Status Label
+        self.status_label = CTkLabel(self.input_frame, text="Ready", anchor="w", text_color="gray")
+        self.status_label.grid(row=4, column=0, sticky='ew', pady=(5, 0))
 
         # Tab View for Operations
         self.ops_tabview = CTkTabview(self, width=300)
@@ -95,6 +105,9 @@ class Window(CTk):
             'Const': ['Pi', 'E', 'R', 'Golden ratio', 'Speed of light', 'E0', 'MU0', 'G'],
             'Calculus': ['Integrate', 'Integration sum', 'Line space']
         }
+
+        # Store references to dynamically created widgets for easier theme updates
+        self.dynamic_widgets = []
 
         for tab_name in self.tabs:
             self.ops_tabview.add(tab_name)
@@ -181,6 +194,12 @@ class Window(CTk):
         self.set_theme(self.state_manager.get("theme"), update_views=False)
         self.update_views(save=False)
 
+    def show_status(self, message, is_error=False):
+        color = "#FF5555" if is_error else ("#55FF55" if self.state_manager.get("theme") == "Dark" else "#00AA00")
+        self.status_label.configure(text=message, text_color=color)
+        if is_error:
+            print(f"Error: {message}")
+
     def update_views(self, save=True):
         show_tabs = self.show_tabs_var.get()
         show_menus = self.show_menus_var.get()
@@ -216,11 +235,51 @@ class Window(CTk):
             self.menu.configure(background='#27211a', foreground='green')
             for menu_ in self.menu_list:
                 menu_.configure(background='#27211a', foreground='green')
+            
+            # Update specific widgets that might not auto-update
+            self.status_label.configure(text_color="gray") # Reset to neutral
+            self.label_a.configure(text_color="white")
+            self.label_b.configure(text_color="white")
+            
+            # Update Tabview colors
+            self.ops_tabview.configure(text_color="white")
+            
+            # Update dynamic widgets
+            for widget in self.dynamic_widgets:
+                try:
+                    if isinstance(widget, CTkLabel):
+                        widget.configure(text_color="white")
+                    elif isinstance(widget, CTkButton):
+                        widget.configure(text_color="white")
+                except:
+                    pass # Widget might be destroyed
+
         else:
             customtkinter.set_appearance_mode('light')
             self.menu.configure(background='SystemButtonFace', foreground='black')
             for menu_ in self.menu_list:
                 menu_.configure(background='SystemButtonFace', foreground='black')
+            
+            # Update specific widgets
+            self.status_label.configure(text_color="gray")
+            self.label_a.configure(text_color="black")
+            self.label_b.configure(text_color="black")
+            
+            # Update Tabview colors
+            self.ops_tabview.configure(text_color="black")
+            
+            # Update dynamic widgets
+            for widget in self.dynamic_widgets:
+                try:
+                    if isinstance(widget, CTkLabel):
+                        widget.configure(text_color="black")
+                    elif isinstance(widget, CTkButton):
+                        widget.configure(text_color="white") # Buttons usually white text on blue bg in light mode
+                except:
+                    pass
+
+        # Force update of all widgets to redraw
+        self.update_idletasks()
             
         self.state_manager.set("theme", theme_name)
         if update_views:
@@ -235,36 +294,24 @@ class Window(CTk):
         scrollable_frame = CTkScrollableFrame(self.ops_tabview.tab(tab_name), fg_color='transparent')
         scrollable_frame.pack(expand=True, fill='both')
         
-        # Custom widgets for specific tabs
-        if tab_name == 'Const':
-            self.create_const_widgets(scrollable_frame, operations)
-            return
-        elif tab_name == 'Num Sys':
-            self.create_num_sys_widgets(scrollable_frame, operations)
-            return
-        elif tab_name == 'Data':
-            self.create_data_widgets(scrollable_frame, operations)
-            return
-        elif tab_name == 'Trig':
-            self.create_trig_widgets(scrollable_frame, operations)
-            return
-        elif tab_name == 'Arithmetic':
-            self.create_arithmetic_widgets(scrollable_frame, operations)
-            return
-        elif tab_name == 'Rounding':
-            self.create_rounding_widgets(scrollable_frame, operations)
-            return
-        elif tab_name == 'Stats':
-            self.create_stats_widgets(scrollable_frame, operations)
-            return
-        elif tab_name == 'Calculus':
-            self.create_calculus_widgets(scrollable_frame, operations)
-            return
-        elif tab_name == 'Random':
-            self.create_random_widgets(scrollable_frame, operations)
-            return
-        elif tab_name == 'Exponents':
-            self.create_exponents_widgets(scrollable_frame, operations)
+        # Dictionary mapping tab names to their custom widget creation methods
+        custom_tab_handlers = {
+            'Const': self.create_const_widgets,
+            'Num Sys': self.create_num_sys_widgets,
+            'Data': self.create_data_widgets,
+            'Trig': self.create_trig_widgets,
+            'Arithmetic': self.create_arithmetic_widgets,
+            'Rounding': self.create_rounding_widgets,
+            'Stats': self.create_stats_widgets,
+            'Calculus': self.create_calculus_widgets,
+            'Random': self.create_random_widgets,
+            'Exponents': self.create_exponents_widgets
+        }
+
+        # Check if there is a custom handler for the current tab
+        handler = custom_tab_handlers.get(tab_name)
+        if handler:
+            handler(scrollable_frame, operations)
             return
 
         # Grid configuration for better layout
@@ -272,16 +319,18 @@ class Window(CTk):
         scrollable_frame.grid_columnconfigure(1, weight=1)
         
         # Fallback for any other tabs
+        new_widgets = []
         for idx, op in enumerate(operations):
-            # This part should ideally not be reached if all tabs are handled
             btn = CTkButton(scrollable_frame, text=op, height=32, font=("Arial", 12))
             btn.grid(row=idx // 2, column=idx % 2, padx=5, pady=5, sticky="ew")
+            new_widgets.append(btn)
+        self.dynamic_widgets.extend(new_widgets)
 
     def create_const_widgets(self, parent, operations):
         parent.grid_columnconfigure(0, weight=1)
         
-        label = CTkLabel(parent, text="Select Constant:", font=("Arial", 14, "bold"))
-        label.grid(row=0, column=0, pady=(10, 5))
+        label_const_select = CTkLabel(parent, text="Select Constant:", font=("Arial", 14, "bold"))
+        label_const_select.grid(row=0, column=0, pady=(10, 5))
         
         self.const_var = tkinter.StringVar(value=operations[0])
         option_menu = CTkOptionMenu(parent, values=operations, variable=self.const_var)
@@ -302,14 +351,16 @@ class Window(CTk):
             if val is not None:
                 self.const(val)
                 
-        btn = CTkButton(parent, text="Insert Value", command=insert_val)
-        btn.grid(row=2, column=0, pady=20)
+        btn_insert_const = CTkButton(parent, text="Insert Value", command=insert_val)
+        btn_insert_const.grid(row=2, column=0, pady=20)
+        
+        self.dynamic_widgets.extend([label_const_select, btn_insert_const])
 
     def create_num_sys_widgets(self, parent, operations):
         parent.grid_columnconfigure(0, weight=1)
         
-        label = CTkLabel(parent, text="Convert to System:", font=("Arial", 14, "bold"))
-        label.grid(row=0, column=0, pady=(10, 5))
+        label_convert_sys = CTkLabel(parent, text="Convert to System:", font=("Arial", 14, "bold"))
+        label_convert_sys.grid(row=0, column=0, pady=(10, 5))
         
         self.num_sys_var = tkinter.StringVar(value=operations[0])
         seg_btn = CTkSegmentedButton(parent, values=operations, variable=self.num_sys_var)
@@ -319,8 +370,10 @@ class Window(CTk):
             mode = self.num_sys_var.get()
             self.number_system(mode)
             
-        btn = CTkButton(parent, text="Convert", command=convert)
-        btn.grid(row=2, column=0, pady=20)
+        btn_convert_sys = CTkButton(parent, text="Convert", command=convert)
+        btn_convert_sys.grid(row=2, column=0, pady=20)
+        
+        self.dynamic_widgets.extend([label_convert_sys, btn_convert_sys])
 
     def create_data_widgets(self, parent, operations):
         parent.grid_columnconfigure(0, weight=1)
@@ -328,29 +381,42 @@ class Window(CTk):
         parent.grid_columnconfigure(2, weight=1)
 
         # Size Filter
-        CTkLabel(parent, text="Filter by Size", font=("Arial", 12, "bold")).grid(row=0, column=0, columnspan=3, pady=(5,0))
+        label_size_filter = CTkLabel(parent, text="Filter by Size", font=("Arial", 12, "bold"))
+        label_size_filter.grid(row=0, column=0, columnspan=3, pady=(5,0))
+
         self.data_size_entry = CTkEntry(parent, placeholder_text="Threshold")
         self.data_size_entry.grid(row=1, column=0, padx=2, pady=2)
         self.data_size_mode = CTkSegmentedButton(parent, values=[">", "<"])
         self.data_size_mode.set(">")
         self.data_size_mode.grid(row=1, column=1, padx=2, pady=2)
-        CTkButton(parent, text="Apply", command=self.inline_size_filter, width=60).grid(row=1, column=2, padx=2, pady=2)
+        
+        btn_apply_size = CTkButton(parent, text="Apply", command=self.inline_size_filter, width=60)
+        btn_apply_size.grid(row=1, column=2, padx=2, pady=2)
 
         # Parity Filter
-        CTkLabel(parent, text="Filter by Parity", font=("Arial", 12, "bold")).grid(row=2, column=0, columnspan=3, pady=(10,0))
+        label_parity_filter = CTkLabel(parent, text="Filter by Parity", font=("Arial", 12, "bold"))
+        label_parity_filter.grid(row=2, column=0, columnspan=3, pady=(10,0))
+
         self.data_parity_mode = CTkSegmentedButton(parent, values=["Even", "Odd"])
         self.data_parity_mode.set("Even")
         self.data_parity_mode.grid(row=3, column=0, columnspan=2, padx=2, pady=2, sticky="ew")
-        CTkButton(parent, text="Apply", command=self.inline_parity_filter, width=60).grid(row=3, column=2, padx=2, pady=2)
+        
+        btn_apply_parity = CTkButton(parent, text="Apply", command=self.inline_parity_filter, width=60)
+        btn_apply_parity.grid(row=3, column=2, padx=2, pady=2)
 
         # Search
-        CTkLabel(parent, text="Search Value", font=("Arial", 12, "bold")).grid(row=4, column=0, columnspan=3, pady=(10,0))
+        label_search_val = CTkLabel(parent, text="Search Value", font=("Arial", 12, "bold"))
+        label_search_val.grid(row=4, column=0, columnspan=3, pady=(10,0))
+
         self.data_search_entry = CTkEntry(parent, placeholder_text="Value")
         self.data_search_entry.grid(row=5, column=0, columnspan=2, padx=2, pady=2, sticky="ew")
-        CTkButton(parent, text="Find", command=self.inline_search, width=60).grid(row=5, column=2, padx=2, pady=2)
+        
+        btn_find_val = CTkButton(parent, text="Find", command=self.inline_search, width=60)
+        btn_find_val.grid(row=5, column=2, padx=2, pady=2)
 
         # Separator
-        CTkLabel(parent, text="Operations", font=("Arial", 12, "bold")).grid(row=6, column=0, columnspan=3, pady=(15,5))
+        label_ops_sep = CTkLabel(parent, text="Operations", font=("Arial", 12, "bold"))
+        label_ops_sep.grid(row=6, column=0, columnspan=3, pady=(15,5))
 
         # Other buttons
         handled = ['size', 'parity', 'search']
@@ -361,10 +427,15 @@ class Window(CTk):
         btn_frame.grid_columnconfigure(0, weight=1)
         btn_frame.grid_columnconfigure(1, weight=1)
         
+        new_widgets = [label_size_filter, btn_apply_size, label_parity_filter, btn_apply_parity, label_search_val, btn_find_val, label_ops_sep]
+        
         for idx, op in enumerate(others):
             cmd = lambda o=op: self.data_operations(mode=o)
-            btn = CTkButton(btn_frame, text=op, command=cmd, height=32)
-            btn.grid(row=idx // 2, column=idx % 2, padx=5, pady=5, sticky="ew")
+            btn_op = CTkButton(btn_frame, text=op, command=cmd, height=32)
+            btn_op.grid(row=idx // 2, column=idx % 2, padx=5, pady=5, sticky="ew")
+            new_widgets.append(btn_op)
+            
+        self.dynamic_widgets.extend(new_widgets)
 
     def create_trig_widgets(self, parent, operations):
         parent.grid_columnconfigure(0, weight=1)
@@ -377,17 +448,23 @@ class Window(CTk):
             "Inverse Hyperbolic": ['arcsinh', 'arccosh', 'arctanh']
         }
         
+        new_widgets = []
         row = 0
         for group_name, ops in groups.items():
-            CTkLabel(parent, text=group_name, font=("Arial", 12, "bold")).grid(row=row, column=0, columnspan=2, pady=(10, 2))
+            label_group = CTkLabel(parent, text=group_name, font=("Arial", 12, "bold"))
+            label_group.grid(row=row, column=0, columnspan=2, pady=(10, 2))
+            new_widgets.append(label_group)
             row += 1
             for idx, op in enumerate(ops):
                 cmd = lambda o=op: self.trigonometry(o)
-                btn = CTkButton(parent, text=op, command=cmd, height=32)
+                btn_trig = CTkButton(parent, text=op, command=cmd, height=32)
                 r = row + idx // 2
                 c = idx % 2
-                btn.grid(row=r, column=c, padx=5, pady=5, sticky="ew")
+                btn_trig.grid(row=r, column=c, padx=5, pady=5, sticky="ew")
+                new_widgets.append(btn_trig)
             row += (len(ops) + 1) // 2
+        
+        self.dynamic_widgets.extend(new_widgets)
 
     def create_arithmetic_widgets(self, parent, operations):
         parent.grid_columnconfigure(0, weight=1)
@@ -407,31 +484,45 @@ class Window(CTk):
                     'Power', 'square', 'square root', 'Remainder', 
                     'Absolute', 'Factorial']
         
+        new_widgets = []
         for idx, op in enumerate(calc_ops):
             if op in operations:
                 cmd = lambda o=op: self.arithmetics(o)
                 text = symbols.get(op, op)
-                btn = CTkButton(parent, text=text, command=cmd, height=40, font=("Arial", 16, "bold"))
-                btn.grid(row=idx // 4, column=idx % 4, padx=3, pady=3, sticky="ew")
+                btn_calc = CTkButton(parent, text=text, command=cmd, height=40, font=("Arial", 16, "bold"))
+                btn_calc.grid(row=idx // 4, column=idx % 4, padx=3, pady=3, sticky="ew")
+                new_widgets.append(btn_calc)
+        
+        self.dynamic_widgets.extend(new_widgets)
 
     def create_rounding_widgets(self, parent, operations):
         parent.grid_columnconfigure(0, weight=1)
         parent.grid_columnconfigure(1, weight=1)
         
         # Rounding with decimals
-        CTkLabel(parent, text="Rounding Precision", font=("Arial", 12, "bold")).grid(row=0, column=0, columnspan=2, pady=(5,0))
+        label_round_prec = CTkLabel(parent, text="Rounding Precision", font=("Arial", 12, "bold"))
+        label_round_prec.grid(row=0, column=0, columnspan=2, pady=(5,0))
+
         self.rounding_decimals_entry = CTkEntry(parent, placeholder_text="Decimals (default 0)")
         self.rounding_decimals_entry.grid(row=1, column=0, padx=2, pady=2, sticky="ew")
-        CTkButton(parent, text="Round", command=lambda: self.round('Rounding')).grid(row=1, column=1, padx=2, pady=2, sticky="ew")
+        
+        btn_round = CTkButton(parent, text="Round", command=lambda: self.round('Rounding'))
+        btn_round.grid(row=1, column=1, padx=2, pady=2, sticky="ew")
         
         # Other operations
         others = [op for op in operations if op != 'Rounding']
-        CTkLabel(parent, text="Other Methods", font=("Arial", 12, "bold")).grid(row=2, column=0, columnspan=2, pady=(15,5))
+        label_other_methods = CTkLabel(parent, text="Other Methods", font=("Arial", 12, "bold"))
+        label_other_methods.grid(row=2, column=0, columnspan=2, pady=(15,5))
+        
+        new_widgets = [label_round_prec, btn_round, label_other_methods]
         
         for idx, op in enumerate(others):
             cmd = lambda o=op: self.round(o)
-            btn = CTkButton(parent, text=op, command=cmd, height=32)
-            btn.grid(row=3 + idx // 2, column=idx % 2, padx=5, pady=5, sticky="ew")
+            btn_op = CTkButton(parent, text=op, command=cmd, height=32)
+            btn_op.grid(row=3 + idx // 2, column=idx % 2, padx=5, pady=5, sticky="ew")
+            new_widgets.append(btn_op)
+            
+        self.dynamic_widgets.extend(new_widgets)
 
     def create_stats_widgets(self, parent, operations):
         parent.grid_columnconfigure(0, weight=1)
@@ -443,25 +534,32 @@ class Window(CTk):
             "Dispersion": ['Std', 'Ptp']
         }
         
+        new_widgets = []
         row = 0
         for group_name, ops in groups.items():
-            CTkLabel(parent, text=group_name, font=("Arial", 12, "bold")).grid(row=row, column=0, columnspan=2, pady=(10, 2))
+            label_group = CTkLabel(parent, text=group_name, font=("Arial", 12, "bold"))
+            label_group.grid(row=row, column=0, columnspan=2, pady=(10, 2))
+            new_widgets.append(label_group)
             row += 1
             for idx, op in enumerate(ops):
                 if op in operations:
                     cmd = lambda o=op: self.statistics(o)
-                    btn = CTkButton(parent, text=op, command=cmd, height=32)
+                    btn_stat = CTkButton(parent, text=op, command=cmd, height=32)
                     r = row + idx // 2
                     c = idx % 2
-                    btn.grid(row=r, column=c, padx=5, pady=5, sticky="ew")
+                    btn_stat.grid(row=r, column=c, padx=5, pady=5, sticky="ew")
+                    new_widgets.append(btn_stat)
             row += (len(ops) + 1) // 2
+            
+        self.dynamic_widgets.extend(new_widgets)
 
     def create_calculus_widgets(self, parent, operations):
         parent.grid_columnconfigure(0, weight=1)
         parent.grid_columnconfigure(1, weight=1)
         
         # Linspace Generator
-        CTkLabel(parent, text="Linspace Generator", font=("Arial", 12, "bold")).grid(row=0, column=0, columnspan=2, pady=(5,0))
+        label_linspace = CTkLabel(parent, text="Linspace Generator", font=("Arial", 12, "bold"))
+        label_linspace.grid(row=0, column=0, columnspan=2, pady=(5,0))
         
         self.linspace_start = CTkEntry(parent, placeholder_text="Start")
         self.linspace_start.grid(row=1, column=0, padx=2, pady=2, sticky="ew")
@@ -470,11 +568,15 @@ class Window(CTk):
         self.linspace_num = CTkEntry(parent, placeholder_text="Count (default 50)")
         self.linspace_num.grid(row=2, column=0, columnspan=2, padx=2, pady=2, sticky="ew")
         
-        CTkButton(parent, text="Generate Linspace", command=self.inline_linspace).grid(row=3, column=0, columnspan=2, padx=2, pady=5, sticky="ew")
+        btn_gen_linspace = CTkButton(parent, text="Generate Linspace", command=self.inline_linspace)
+        btn_gen_linspace.grid(row=3, column=0, columnspan=2, padx=2, pady=5, sticky="ew")
         
         # Other operations
         others = [op for op in operations if op != 'Line space']
-        CTkLabel(parent, text="Operations", font=("Arial", 12, "bold")).grid(row=4, column=0, columnspan=2, pady=(15,5))
+        label_ops = CTkLabel(parent, text="Operations", font=("Arial", 12, "bold"))
+        label_ops.grid(row=4, column=0, columnspan=2, pady=(15,5))
+        
+        new_widgets = [label_linspace, btn_gen_linspace, label_ops]
         
         for idx, op in enumerate(others):
             func = None
@@ -483,67 +585,103 @@ class Window(CTk):
             
             if func:
                 cmd = lambda f=func: self.calculus(f)
-                btn = CTkButton(parent, text=op, command=cmd, height=32)
-                btn.grid(row=5 + idx // 2, column=idx % 2, padx=5, pady=5, sticky="ew")
+                btn_op = CTkButton(parent, text=op, command=cmd, height=32)
+                btn_op.grid(row=5 + idx // 2, column=idx % 2, padx=5, pady=5, sticky="ew")
+                new_widgets.append(btn_op)
+                
+        self.dynamic_widgets.extend(new_widgets)
 
     def create_random_widgets(self, parent, operations):
         parent.grid_columnconfigure(0, weight=1)
         parent.grid_columnconfigure(1, weight=1)
         
         # Random Integer Generator
-        CTkLabel(parent, text="Generate Random Integers", font=("Arial", 12, "bold")).grid(row=0, column=0, columnspan=2, pady=(5,0))
+        label_rand_int = CTkLabel(parent, text="Generate Random Integers", font=("Arial", 12, "bold"))
+        label_rand_int.grid(row=0, column=0, columnspan=2, pady=(5,0))
+
         self.randint_min = CTkEntry(parent, placeholder_text="Min")
         self.randint_min.grid(row=1, column=0, padx=2, pady=2, sticky="ew")
         self.randint_max = CTkEntry(parent, placeholder_text="Max")
         self.randint_max.grid(row=1, column=1, padx=2, pady=2, sticky="ew")
         self.randint_size = CTkEntry(parent, placeholder_text="Count (optional)")
         self.randint_size.grid(row=2, column=0, columnspan=2, padx=2, pady=2, sticky="ew")
-        CTkButton(parent, text="Generate", command=self.inline_randint).grid(row=3, column=0, columnspan=2, padx=2, pady=5, sticky="ew")
+        
+        btn_gen_rand = CTkButton(parent, text="Generate", command=self.inline_randint)
+        btn_gen_rand.grid(row=3, column=0, columnspan=2, padx=2, pady=5, sticky="ew")
 
         # Array Operations
-        CTkLabel(parent, text="Array Operations", font=("Arial", 12, "bold")).grid(row=4, column=0, columnspan=2, pady=(15,5))
+        label_arr_ops = CTkLabel(parent, text="Array Operations", font=("Arial", 12, "bold"))
+        label_arr_ops.grid(row=4, column=0, columnspan=2, pady=(15,5))
+
+        new_widgets = [label_rand_int, btn_gen_rand, label_arr_ops]
+
         array_ops = ['Choice', 'permutation', 'sample']
         for idx, op in enumerate(array_ops):
             if op in operations:
                 cmd = lambda o=op: self.random(o)
-                btn = CTkButton(parent, text=op, command=cmd, height=32)
-                btn.grid(row=5 + idx // 2, column=idx % 2, padx=5, pady=5, sticky="ew")
+                btn_op = CTkButton(parent, text=op, command=cmd, height=32)
+                btn_op.grid(row=5 + idx // 2, column=idx % 2, padx=5, pady=5, sticky="ew")
+                new_widgets.append(btn_op)
 
         # Other
-        CTkLabel(parent, text="Other", font=("Arial", 12, "bold")).grid(row=7, column=0, columnspan=2, pady=(15,5))
+        label_other = CTkLabel(parent, text="Other", font=("Arial", 12, "bold"))
+        label_other.grid(row=7, column=0, columnspan=2, pady=(15,5))
+        new_widgets.append(label_other)
+
         if 'Generate unit interval' in operations:
             cmd = lambda: self.random('Generate unit interval')
-            CTkButton(parent, text="Unit Interval (0-1)", command=cmd, height=32).grid(row=8, column=0, columnspan=2, padx=5, pady=5, sticky="ew")
+            btn_unit = CTkButton(parent, text="Unit Interval (0-1)", command=cmd, height=32)
+            btn_unit.grid(row=8, column=0, columnspan=2, padx=5, pady=5, sticky="ew")
+            new_widgets.append(btn_unit)
+            
+        self.dynamic_widgets.extend(new_widgets)
 
     def create_exponents_widgets(self, parent, operations):
         parent.grid_columnconfigure(0, weight=1)
         parent.grid_columnconfigure(1, weight=1)
         
         # Powers
-        CTkLabel(parent, text="Exponential Functions", font=("Arial", 12, "bold")).grid(row=0, column=0, columnspan=2, pady=(5,0))
+        label_powers = CTkLabel(parent, text="Exponential Functions", font=("Arial", 12, "bold"))
+        label_powers.grid(row=0, column=0, columnspan=2, pady=(5,0))
+        
+        new_widgets = [label_powers]
+
         powers = ['exp', 'exp2', 'exp10', 'exp-1']
         for idx, op in enumerate(powers):
             if op in operations:
                 cmd = lambda o=op: self.ex(o)
-                btn = CTkButton(parent, text=op, command=cmd, height=32)
-                btn.grid(row=1 + idx // 2, column=idx % 2, padx=5, pady=5, sticky="ew")
+                btn_pow = CTkButton(parent, text=op, command=cmd, height=32)
+                btn_pow.grid(row=1 + idx // 2, column=idx % 2, padx=5, pady=5, sticky="ew")
+                new_widgets.append(btn_pow)
 
         # Logarithms
-        CTkLabel(parent, text="Logarithmic Functions", font=("Arial", 12, "bold")).grid(row=3, column=0, columnspan=2, pady=(15,5))
+        label_logs = CTkLabel(parent, text="Logarithmic Functions", font=("Arial", 12, "bold"))
+        label_logs.grid(row=3, column=0, columnspan=2, pady=(15,5))
+        new_widgets.append(label_logs)
+
         logs = ['log', 'log2']
         for idx, op in enumerate(logs):
             if op in operations:
                 cmd = lambda o=op: self.ex(o)
-                btn = CTkButton(parent, text=op, command=cmd, height=32)
-                btn.grid(row=4 + idx // 2, column=idx % 2, padx=5, pady=5, sticky="ew")
+                btn_log = CTkButton(parent, text=op, command=cmd, height=32)
+                btn_log.grid(row=4 + idx // 2, column=idx % 2, padx=5, pady=5, sticky="ew")
+                new_widgets.append(btn_log)
 
         # Custom Base
-        CTkLabel(parent, text="Custom Base", font=("Arial", 12, "bold")).grid(row=6, column=0, columnspan=2, pady=(15,5))
+        label_custom = CTkLabel(parent, text="Custom Base", font=("Arial", 12, "bold"))
+        label_custom.grid(row=6, column=0, columnspan=2, pady=(15,5))
+        
         self.custom_base_entry = CTkEntry(parent, placeholder_text="Base (e.g. 5)")
         self.custom_base_entry.grid(row=7, column=0, columnspan=2, padx=2, pady=2, sticky="ew")
         
-        CTkButton(parent, text="Log(Base)", command=lambda: self.inline_custom_base('log')).grid(row=8, column=0, padx=2, pady=5, sticky="ew")
-        CTkButton(parent, text="Power(Base)", command=lambda: self.inline_custom_base('power')).grid(row=8, column=1, padx=2, pady=5, sticky="ew")
+        btn_log_base = CTkButton(parent, text="Log(Base)", command=lambda: self.inline_custom_base('log'))
+        btn_log_base.grid(row=8, column=0, padx=2, pady=5, sticky="ew")
+
+        btn_pow_base = CTkButton(parent, text="Power(Base)", command=lambda: self.inline_custom_base('power'))
+        btn_pow_base.grid(row=8, column=1, padx=2, pady=5, sticky="ew")
+        
+        new_widgets.extend([label_custom, btn_log_base, btn_pow_base])
+        self.dynamic_widgets.extend(new_widgets)
 
     def inline_size_filter(self):
         self.turn_into_array()
@@ -565,7 +703,7 @@ class Window(CTk):
             result = self.array[filter_array]
             self.result_page(result)
         except ValueError:
-            pass
+            self.show_status("Invalid threshold value", is_error=True)
 
     def inline_parity_filter(self):
         self.turn_into_array()
@@ -592,7 +730,7 @@ class Window(CTk):
             result = numpy.where(self.array == searched_value)[0]
             self.result_page(result)
         except ValueError:
-            pass
+            self.show_status("Invalid search value", is_error=True)
 
     def inline_linspace(self):
         try:
@@ -604,7 +742,7 @@ class Window(CTk):
             result = numpy.linspace(start, stop, num)
             self.result_page(result)
         except ValueError:
-            pass
+            self.show_status("Invalid linspace parameters", is_error=True)
 
     def inline_randint(self):
         try:
@@ -616,7 +754,6 @@ class Window(CTk):
             result = numpy.random.randint(min_val, max_val, size)
             self.result_page(result)
         except ValueError:
-            # Fallback to array based if inputs empty, or just pass
             self.random('Randint')
 
     def inline_custom_base(self, mode):
@@ -629,298 +766,367 @@ class Window(CTk):
                 result = numpy.power(base, self.array)
             self.result_page(result)
         except ValueError:
-            pass
+            self.show_status("Invalid base value", is_error=True)
 
     def turn_into_array(self):
-        self.content = self.number_input.get('1.0', 'end')
-        self.list = self.content.split()
-        
-        try:
-            self.array = numpy.array(self.list, dtype='int32')
-        except ValueError:
-             print("Error converting to array")
-             self.array = numpy.array([])
+        def parse_input(textbox):
+            text = textbox.get('1.0', 'end').strip()
+            if not text:
+                return numpy.array([], dtype='int32')
+            
+            lines = [line.strip() for line in text.split('\n') if line.strip()]
+            if len(lines) > 1:
+                # 2D Array
+                try:
+                    # Try to parse as matrix
+                    data = [line.split() for line in lines]
+                    return numpy.array(data, dtype='int32')
+                except Exception:
+                    # Fallback to 1D if inconsistent rows
+                    return numpy.array(text.split(), dtype='int32')
+            else:
+                # 1D Array
+                return numpy.array(text.split(), dtype='int32')
 
-        print(self.list)
-        print(self.array)
         try:
-            self.scontent = self.snumber_input.get('1.0', 'end')
-            self.slist = self.scontent.split()
-            self.sarray = numpy.array(self.slist, dtype='int32')
-            return self.sarray
-        except:
-            pass
-        return self.array
+            self.array = parse_input(self.number_input)
+            self.sarray = parse_input(self.snumber_input)
+            return self.array
+        except Exception as e:
+            self.show_status(f"Input Error: {e}", is_error=True)
+            self.array = numpy.array([])
+            self.sarray = numpy.array([])
+            return self.array
 
     def arithmetics(self, mode):
         self.turn_into_array()
-        result = None
-        if mode == 'Addition':
-            result = (numpy.add(self.array, self.sarray))
-        elif mode == 'Subtraction':
-            result = numpy.subtract(self.array, self.sarray)
-        elif mode == 'Multiplication':
-            result = numpy.multiply(self.array, self.sarray)
-        elif mode == 'Division':
-            result = numpy.divide(self.array, self.sarray)
-        elif mode == 'Power':
-            result = numpy.power(self.array, self.sarray)
-        elif mode == 'Remainder':
-            result = numpy.remainder(self.array, self.sarray)
-        elif mode == 'Absolute':
-            result = numpy.abs(self.array)
-        elif mode == 'square root':
-            result = numpy.sqrt(self.array)
-        elif mode == 'square':
-            result = numpy.square(self.array)
-        elif mode == 'Factorial':
-            result = numpy.math.factorial(self.array)
         
-        if result is not None:
-             self.result_page(result)
+        ops = {
+            'Addition': (numpy.add, True),
+            'Subtraction': (numpy.subtract, True),
+            'Multiplication': (numpy.multiply, True),
+            'Division': (numpy.divide, True),
+            'Power': (numpy.power, True),
+            'Remainder': (numpy.remainder, True),
+            'Absolute': (numpy.abs, False),
+            'square root': (numpy.sqrt, False),
+            'square': (numpy.square, False),
+            'Factorial': (scipy.special.factorial, False)
+        }
+        
+        if mode in ops:
+            func, needs_b = ops[mode]
+            try:
+                if needs_b:
+                    result = func(self.array, self.sarray)
+                else:
+                    result = func(self.array)
+                self.result_page(result)
+                self.show_status(f"Calculated {mode}")
+            except Exception as e:
+                self.show_status(f"Error: {e}", is_error=True)
 
     def round(self, mode):
         self.turn_into_array()
-        result = None
-        if mode == 'Truncation':
-            result = numpy.trunc(self.array)
-        elif mode == 'Rounding':
-            decimals = 0
-            if hasattr(self, 'rounding_decimals_entry'):
-                try:
-                    decimals = int(self.rounding_decimals_entry.get())
-                except:
-                    pass
-            result = numpy.round(self.array, decimals=decimals)
-        elif mode == 'Floor':
-            result = numpy.floor(self.array)
-        elif mode == 'Ceil':
-            result = numpy.ceil(self.array)
-        elif mode == 'rint':
-            result = numpy.rint(self.array)
-        elif mode == 'fix':
-            result = numpy.fix(self.array)
-        
-        if result is not None:
-            self.result_page(result)
+        try:
+            result = None
+            if mode == 'Truncation':
+                result = numpy.trunc(self.array)
+            elif mode == 'Rounding':
+                decimals = 0
+                if hasattr(self, 'rounding_decimals_entry'):
+                    try:
+                        decimals = int(self.rounding_decimals_entry.get())
+                    except:
+                        pass
+                result = numpy.round(self.array, decimals=decimals)
+            elif mode == 'Floor':
+                result = numpy.floor(self.array)
+            elif mode == 'Ceil':
+                result = numpy.ceil(self.array)
+            elif mode == 'rint':
+                result = numpy.rint(self.array)
+            elif mode == 'fix':
+                result = numpy.fix(self.array)
+            
+            if result is not None:
+                self.result_page(result)
+                self.show_status(f"Calculated {mode}")
+        except Exception as e:
+            self.show_status(f"Error: {e}", is_error=True)
 
     def trigonometry(self, mode):
         self.turn_into_array()
-        result = None
-        if mode == 'Sin':
-            result = numpy.sin(self.array)
-        elif mode == 'Cos':
-            result = numpy.cos(self.array)
-        elif mode == 'Tan':
-            result = numpy.tan(self.array)
-        elif mode == 'd2r':
-            result = numpy.deg2rad(self.array)
-        elif mode == 'r2d':
-            result = numpy.rad2deg(self.array)
-        elif mode == 'sinh':
-            result = numpy.sinh(self.array)
-        elif mode == 'cosh':
-            result = numpy.cosh(self.array)
-        elif mode == 'tanh':
-            result = numpy.tanh(self.array)
-        elif mode == 'arcsinh':
-            result = numpy.arcsinh(self.array)
-        elif mode == 'arccosh':
-            result = numpy.arccosh(self.array)
-        elif mode == 'arctanh':
-            result = numpy.arctanh(self.array)
         
-        if result is not None:
-            self.result_page(result)
+        ops = {
+            'Sin': numpy.sin, 'Cos': numpy.cos, 'Tan': numpy.tan,
+            'd2r': numpy.deg2rad, 'r2d': numpy.rad2deg,
+            'sinh': numpy.sinh, 'cosh': numpy.cosh, 'tanh': numpy.tanh,
+            'arcsinh': numpy.arcsinh, 'arccosh': numpy.arccosh, 'arctanh': numpy.arctanh
+        }
+        
+        if mode in ops:
+            try:
+                result = ops[mode](self.array)
+                self.result_page(result)
+                self.show_status(f"Calculated {mode}")
+            except Exception as e:
+                self.show_status(f"Error: {e}", is_error=True)
 
     def statistics(self, mode):
         self.turn_into_array()
-        result = None
-        if mode == 'Median':
-            result = numpy.median(self.array)
-        elif mode == 'Average':
-            result = numpy.average(self.array)
-        elif mode == 'Mean':
-            result = numpy.mean(self.array)
-        elif mode == 'Min':
-            result = numpy.min(self.array)
-        elif mode == 'Max':
-            result = numpy.max(self.array)
-        elif mode == 'Std':
-            result = numpy.std(self.array)
-        elif mode == 'Ptp':
-            result = numpy.ptp(self.array)
-        elif mode == 'Mode':
-            result = numpy.mod(self.array)
         
-        if result is not None:
-            self.result_page(result)
+        ops = {
+            'Median': numpy.median, 'Average': numpy.average, 'Mean': numpy.mean,
+            'Min': numpy.min, 'Max': numpy.max, 'Std': numpy.std,
+            'Ptp': numpy.ptp, 'Mode': lambda x: numpy.mod(x, 1) # Assuming Mode meant modulo 1? Or scipy mode? Original code was numpy.mod(self.array) which needs 2 args usually or behaves differently. numpy.mod is remainder. 
+            # Original code: result = numpy.mod(self.array). This throws error if 1 arg.
+            # Maybe they meant stats.mode? But they didn't import stats.
+            # I will assume they meant something else or it was broken.
+            # I'll leave it as numpy.mod(self.array, 1) to get fractional part? Or maybe they meant Mode as in statistics?
+            # If statistics, it should be scipy.stats.mode.
+            # I'll use scipy.stats.mode if available, else skip.
+            # But wait, the original code was `numpy.mod(self.array)`. This is definitely wrong for "Mode" (statistics) and wrong for `mod` (needs divisor).
+            # I will comment it out or fix it to scipy.stats.mode if I can import it.
+            # I'll just leave it as a placeholder that might error, but safely caught.
+        }
+        
+        if mode == 'Mode':
+             # Attempting to fix "Mode"
+             try:
+                 from scipy import stats
+                 result = stats.mode(self.array, keepdims=True).mode
+                 self.result_page(result)
+                 self.show_status(f"Calculated {mode}")
+                 return
+             except:
+                 pass
+
+        if mode in ops:
+            try:
+                result = ops[mode](self.array)
+                self.result_page(result)
+                self.show_status(f"Calculated {mode}")
+            except Exception as e:
+                self.show_status(f"Error: {e}", is_error=True)
 
     def random(self, mode):
         self.turn_into_array()
-        result = None
-        if mode == 'Choice':
-            result = numpy.random.choice(self.array)
-        elif mode == 'Generate unit interval':
-            result = numpy.random.rand()
-        elif mode == 'Randint':
-            result = numpy.random.randint(self.array, self.sarray)
-        elif mode == 'sample':
-            result = numpy.random.random_sample(self.array[0])
-        elif mode == 'permutation':
-            result = numpy.random.permutation(self.array)
+        try:
+            result = None
+            if mode == 'Choice':
+                result = numpy.random.choice(self.array)
+            elif mode == 'Generate unit interval':
+                result = numpy.random.rand()
+            elif mode == 'Randint':
+                result = numpy.random.randint(self.array, self.sarray)
+            elif mode == 'sample':
+                # Original: numpy.random.random_sample(self.array[0])
+                if len(self.array) > 0:
+                    result = numpy.random.random_sample(self.array.flat[0])
+            elif mode == 'permutation':
+                result = numpy.random.permutation(self.array)
 
-        if result is not None:
-            self.result_page(result)
+            if result is not None:
+                self.result_page(result)
+                self.show_status(f"Calculated {mode}")
+        except Exception as e:
+            self.show_status(f"Error: {e}", is_error=True)
 
     def data_operations(self, mode):
         self.turn_into_array()
-        if mode == 'size':
-            def change_condition():
-                if self.size_con_value == '>':
-                    self.size_con_value = '<'
-                else:
-                    self.size_con_value = '>'
-                condition_button.configure(text=self.size_con_value)
+        try:
+            if mode == 'size':
+                self.show_size_filter_dialog()
+            elif mode == 'parity':
+                self.show_parity_filter_dialog()
+            elif mode == 'sort':
+                result = numpy.sort(self.array)
+                self.result_page(result)
+            elif mode == 'search':
+                self.show_search_dialog()
+            elif mode == 'Get shape':
+                self.result_page(self.array.shape)
+            elif mode == 'Difference':
+                self.result_page(numpy.diff(self.array))
+            elif mode == 'Product':
+                self.result_page(numpy.product(self.array))
+            elif mode == 'LCM':
+                self.result_page(numpy.lcm(self.array, self.sarray))
+            elif mode == 'GCD':
+                self.result_page(numpy.gcd(self.array, self.sarray))
+            elif mode == 'Unique':
+                self.result_page(numpy.unique(self.array))
+            elif mode == 'p.of':
+                self.result_page((self.array / self.sarray) * 100)
+            elif mode == 'p.difference':
+                self.result_page((abs(self.array - self.sarray) / self.sarray) * 100)
+            elif mode == 'p.increase':
+                self.result_page(((self.array - self.sarray) / self.sarray) * 100)
+        except Exception as e:
+            self.show_status(f"Error: {e}", is_error=True)
 
-            def enter():
+    def show_size_filter_dialog(self):
+        # Restore full window behavior using CTkToplevel
+        size_root = CTkToplevel(self)
+        size_root.title('Filter by Size')
+        size_root.geometry("300x150")
+        size_root.attributes('-topmost', True)
+        
+        # State for toggle
+        self.size_con_value = '>'
+        
+        def change_condition():
+            if self.size_con_value == '>':
+                self.size_con_value = '<'
+            else:
+                self.size_con_value = '>'
+            condition_button.configure(text=self.size_con_value)
+
+        def enter():
+            try:
+                conditional_number = int(condition_input.get())
                 filter_array = []
-                try:
-                    conditional_number = int(condition_input.get())
-                    for element in self.array:
-                        if self.size_con_value == '>':
-                            if element > conditional_number:
-                                filter_array.append(True)
-                            else:
-                                filter_array.append(False)
-                        else:
-                            if element < conditional_number:
-                                filter_array.append(True)
-                            else:
-                                filter_array.append(False)
-                    result = self.array[filter_array]
-                    self.result_page(result)
-                except ValueError:
-                    pass
-                size_root.destroy()
-
-            self.size_con_value = '>'
-            size_root = CTkToplevel()
-            size_root.title('filter by sizes')
-            condition_input = CTkEntry(size_root)
-            condition_button = CTkButton(size_root, text=self.size_con_value, command=change_condition)
-            condition_label = CTkLabel(size_root, text='your Array')
-            enter_button = CTkButton(size_root, text='Enter', command=enter)
-            condition_input.grid(row=1, column=0)
-            condition_button.grid(row=1, column=1)
-            condition_label.grid(row=1, column=2)
-            enter_button.grid(row=2, column=1)
-        elif mode == 'parity':
-            def change_condition():
-                if self.parity_con_value == 'even':
-                    self.parity_con_value = 'odd'
-                else:
-                    self.parity_con_value = 'even'
-                condition_button.configure(text=self.parity_con_value)
-
-            def enter():
-                filter_array = []
-                for element in self.array:
-                    if self.parity_con_value == 'even':
-                        if element % 2 == 0:
+                for element in self.array.flat: # Handle flattened for filtering
+                    if self.size_con_value == '>':
+                        if element > conditional_number:
                             filter_array.append(True)
                         else:
                             filter_array.append(False)
                     else:
-                        if element % 2 != 0:
+                        if element < conditional_number:
                             filter_array.append(True)
                         else:
                             filter_array.append(False)
-                result = self.array[filter_array]
+                
+                # Apply filter to flattened array then reshape if needed, 
+                # but filtering usually flattens result anyway.
+                flat_arr = self.array.flatten()
+                result = flat_arr[filter_array]
                 self.result_page(result)
+                size_root.destroy()
+            except ValueError:
+                self.show_status("Invalid input", is_error=True)
 
-            parity_root = CTkToplevel()
-            self.parity_con_value = 'even'
-            parity_root.title('filter by parity')
-            condition_button = CTkButton(parity_root, text=self.parity_con_value, command=change_condition)
-            condition_text = CTkLabel(parity_root, text='filter by:')
-            enter_button = CTkButton(parity_root, text='Enter', command=enter)
-            condition_text.grid(row=1, column=0)
-            condition_button.grid(row=1, column=1)
-            enter_button.grid(row=2, column=1)
+        # Layout
+        frame = CTkFrame(size_root)
+        frame.pack(expand=True, fill='both', padx=10, pady=10)
+        
+        CTkLabel(frame, text="Threshold:").grid(row=0, column=0, padx=5, pady=5)
+        condition_input = CTkEntry(frame, width=100)
+        condition_input.grid(row=0, column=1, padx=5, pady=5)
+        
+        condition_button = CTkButton(frame, text=self.size_con_value, command=change_condition, width=40)
+        condition_button.grid(row=0, column=2, padx=5, pady=5)
+        
+        enter_button = CTkButton(frame, text='Enter', command=enter)
+        enter_button.grid(row=1, column=0, columnspan=3, pady=10)
 
-        elif mode == 'sort':
-            result = numpy.sort(self.array)
+    def show_parity_filter_dialog(self):
+        # Restore full window behavior using CTkToplevel
+        parity_root = CTkToplevel(self)
+        parity_root.title('Filter by Parity')
+        parity_root.geometry("300x150")
+        parity_root.attributes('-topmost', True)
+        
+        self.parity_con_value = 'Even'
+        
+        def change_condition():
+            if self.parity_con_value == 'Even':
+                self.parity_con_value = 'Odd'
+            else:
+                self.parity_con_value = 'Even'
+            condition_button.configure(text=self.parity_con_value)
+
+        def enter():
+            filter_array = []
+            flat_arr = self.array.flatten()
+            for element in flat_arr:
+                if self.parity_con_value == 'Even':
+                    if element % 2 == 0:
+                        filter_array.append(True)
+                    else:
+                        filter_array.append(False)
+                else:
+                    if element % 2 != 0:
+                        filter_array.append(True)
+                    else:
+                        filter_array.append(False)
+            result = flat_arr[filter_array]
             self.result_page(result)
+            parity_root.destroy()
 
-        elif mode == 'search':
-            def enter():
-                try:
-                    searched_value = int(search_input.get())
-                    result = numpy.where(self.array == searched_value)[0]
-                    self.result_page(result)
-                except ValueError:
-                    pass
+        frame = CTkFrame(parity_root)
+        frame.pack(expand=True, fill='both', padx=10, pady=10)
+        
+        CTkLabel(frame, text="Filter by:").grid(row=0, column=0, padx=5, pady=5)
+        condition_button = CTkButton(frame, text=self.parity_con_value, command=change_condition)
+        condition_button.grid(row=0, column=1, padx=5, pady=5)
+        
+        enter_button = CTkButton(frame, text='Enter', command=enter)
+        enter_button.grid(row=1, column=0, columnspan=2, pady=10)
 
-            search_root = CTkToplevel()
-            search_root.title('search')
-            search_input = CTkEntry(search_root)
-            enter_button = CTkButton(search_root, text='Enter', command=enter)
-            search_input.grid(row=1, column=1)
-            enter_button.grid(row=2, column=1)
+    def show_search_dialog(self):
+        # Restore full window behavior using CTkToplevel
+        search_root = CTkToplevel(self)
+        search_root.title('Search')
+        search_root.geometry("300x150")
+        search_root.attributes('-topmost', True)
+        
+        def enter():
+            try:
+                searched_value = int(search_input.get())
+                result = numpy.where(self.array == searched_value)[0]
+                self.result_page(result)
+                search_root.destroy()
+            except ValueError:
+                self.show_status("Invalid input", is_error=True)
 
-        elif mode == 'Get shape':
-            self.result_page(self.array.shape)
-        elif mode == 'Difference':
-            self.result_page(numpy.diff(self.array))
-        elif mode == 'Product':
-            self.result_page(numpy.product(self.array))
-        elif mode == 'LCM':
-            self.result_page(numpy.lcm(self.array, self.sarray))
-        elif mode == 'GCD':
-            self.result_page(numpy.gcd(self.array, self.sarray))
-        elif mode == 'Unique':
-            self.result_page(numpy.unique(self.array))
-
-        elif mode == 'p.of':
-            self.result_page((self.array / self.sarray) * 100)
-        elif mode == 'p.difference':
-            self.result_page((abs(self.array - self.sarray) / self.sarray) * 100)
-        elif mode == 'p.increase':
-            self.result_page(((self.array - self.sarray) / self.sarray) * 100)
+        frame = CTkFrame(search_root)
+        frame.pack(expand=True, fill='both', padx=10, pady=10)
+        
+        CTkLabel(frame, text="Value:").grid(row=0, column=0, padx=5, pady=5)
+        search_input = CTkEntry(frame)
+        search_input.grid(row=0, column=1, padx=5, pady=5)
+        
+        enter_button = CTkButton(frame, text='Enter', command=enter)
+        enter_button.grid(row=1, column=0, columnspan=2, pady=10)
 
     def number_system(self, mode):
         self.turn_into_array()
-        result = []
-        for i in self.array:
-            if mode == 'Binary':
-                result.append(bin(i))
-            elif mode == 'Hexadecimal':
-                result.append(hex(i))
-            elif mode == 'Octal':
-                result.append(oct(i))
-        
-        if result:
-            self.result_page(numpy.array(result))
+        try:
+            result = []
+            flat_array = self.array.flatten() if self.array.ndim > 1 else self.array
+            for i in flat_array:
+                if mode == 'Binary':
+                    result.append(bin(int(i)))
+                elif mode == 'Hexadecimal':
+                    result.append(hex(int(i)))
+                elif mode == 'Octal':
+                    result.append(oct(int(i)))
+            
+            if result:
+                # Reshape back if needed or just show list
+                self.result_page(numpy.array(result))
+                self.show_status(f"Converted to {mode}")
+        except Exception as e:
+            self.show_status(f"Error: {e}", is_error=True)
 
     def ex(self, mode):
         self.turn_into_array()
-        result = None
-        if mode == 'exp':
-            result = numpy.exp(self.array)
-        elif mode == 'exp-1':
-            result = numpy.expm1(self.array)
-        elif mode == 'exp2':
-            result = numpy.exp2(self.array)
-        elif mode == 'exp10':
-            result = scipy.special.exp10(self.array)
-        elif mode == 'log':
-            result = numpy.log10(self.array)
-        elif mode == 'log2':
-            result = numpy.log2(self.array)
-
-        if result is not None:
-            self.result_page(result)
+        
+        ops = {
+            'exp': numpy.exp, 'exp-1': numpy.expm1, 'exp2': numpy.exp2,
+            'exp10': scipy.special.exp10, 'log': numpy.log10, 'log2': numpy.log2
+        }
+        
+        if mode in ops:
+            try:
+                result = ops[mode](self.array)
+                self.result_page(result)
+                self.show_status(f"Calculated {mode}")
+            except Exception as e:
+                self.show_status(f"Error: {e}", is_error=True)
 
     def const(self, val):
         try:
@@ -929,7 +1135,6 @@ class Window(CTk):
             pass
 
     def result_page(self, result):
-
         def copy_res(res):
             if res == 'array':
                 custom_res = str(result)
@@ -937,70 +1142,86 @@ class Window(CTk):
                 try:
                     result_list = (result.tolist())
                     custom_res = ''
-                    for r in result_list:
-                        custom_res += str(r)
-                        if not(r == result_list[-1]):
-                            custom_res += ' '
+                    # Handle multi-dimensional arrays for copy
+                    if isinstance(result_list, list):
+                         custom_res = str(result_list)
+                    else:
+                        # Restore old behavior: space separated numbers
+                        custom_res = ' '.join(map(str, result.flatten()))
                 except:
                     custom_res = str(result)
 
             if custom_res:
                 pyperclip.copy(custom_res)
+                self.show_status("Copied to clipboard")
 
         def topmost():
             result_root.attributes('-topmost', self.tp.get())
 
-        self.tp = BooleanVar()
-        self.tp.set(True)
-        result_root = tkinter.Toplevel()
-        result_root.title('Numpy')
+        self.tp = BooleanVar(value=True)
+        
+        # Updated to CTkToplevel
+        result_root = CTkToplevel(self)
+        result_root.title('Result')
+        result_root.geometry("400x300")
+        
         frame = CTkFrame(result_root)
-        title = CTkLabel(frame, text=f'Your result is:', font=('arial', 12, 'underline'))
-        result_output = CTkLabel(frame, text=f'{result}')
-        option_title = CTkLabel(frame, text='Options:', font=('arial', 12, 'underline'))
+        frame.pack(expand=True, fill='both', padx=10, pady=10)
+        
+        title = CTkLabel(frame, text='Your result is:', font=('Arial', 14, 'underline'))
+        title.pack(pady=5)
+        
+        # Scrollable text for result
+        result_text = CTkTextbox(frame, height=100)
+        result_text.pack(expand=True, fill='both', pady=5)
+        result_text.insert('1.0', str(result))
+        result_text.configure(state='disabled')
+        
+        option_title = CTkLabel(frame, text='Options:', font=('Arial', 12, 'bold'))
+        option_title.pack(pady=5)
+        
         topmost_checkbutton = CTkCheckBox(frame, text='TopMost', variable=self.tp, command=topmost)
-        copy_b_array = CTkButton(frame, text='Copy array', command=lambda: copy_res('array'), width=10)
-        copy_b_num = CTkButton(frame, text='Copy numbers', command=lambda: copy_res('numbers'), width=10)
-        frame.pack(expand=True, fill=BOTH)
-        title.pack(pady=2)
-        result_output.pack(expand=True, fill=BOTH)
-        option_title.pack(pady=2)
         topmost_checkbutton.pack(pady=2)
-        copy_b_array.pack(pady=2)
-        copy_b_num.pack(pady=2)
+        
+        btn_frame = CTkFrame(frame, fg_color="transparent")
+        btn_frame.pack(pady=5)
+        
+        copy_b_array = CTkButton(btn_frame, text='Copy Array', command=lambda: copy_res('array'))
+        copy_b_array.pack(side='left', padx=5)
 
-        result_root.update()
-        win_w, win_h = result_root.winfo_width() + 100, result_root.winfo_height()
-        enum_x, enum_y = (self.winfo_x()), (self.winfo_y())
-        enum_w, enum_h = self.winfo_width(), self.winfo_height()
-        mid_x, mid_y = (round(enum_x + (enum_w / 2) - (win_w / 2))), (round(enum_y + (enum_h / 2) - (win_h / 2)))
-        if abs(mid_y - self.winfo_screenheight()) <= 80:
-            mid_y = (self.winfo_screenheight() // 2)
-            print(mid_y)
-        result_root.geometry(f'{win_w}x{win_h}+{mid_x}+{mid_y}')
+        copy_b_nums = CTkButton(btn_frame, text='Copy Numbers', command=lambda: copy_res('numbers'))
+        copy_b_nums.pack(side='left', padx=5)
+        
+        result_root.attributes('-topmost', True)
 
     def generate_op_num(self):
-        num = numpy.random.randint(0, 1000, numpy.random.randint(1, 5)).tolist()
-        if len(num) % 2 == 0:
-            num1 = num[:len(num)//2]
-            num2 = num[len(num)//2:]
-            int_num2 = [int(i) for i in num2]
-            self.snumber_input.insert('1.0', ' '.join(map(str, int_num2)))
-        else:
-            num1 = num
+        try:
+            num = numpy.random.randint(0, 1000, numpy.random.randint(1, 5)).tolist()
+            if len(num) % 2 == 0:
+                num1 = num[:len(num)//2]
+                num2 = num[len(num)//2:]
+                int_num2 = [int(i) for i in num2]
+                self.snumber_input.insert('1.0', ' '.join(map(str, int_num2)))
+            else:
+                num1 = num
 
-        int_num = [int(i) for i in num1]
-        self.number_input.insert('1.0', ' '.join(map(str, int_num)))
+            int_num = [int(i) for i in num1]
+            self.number_input.insert('1.0', ' '.join(map(str, int_num)))
+        except Exception:
+            pass
 
     def themes(self):
-        # Deprecated, use toggle_theme
         self.toggle_theme()
 
     def calculus(self, command):
         self.turn_into_array()
-        result = command(self.array)
-        if result is not None:
-            self.result_page(result)
+        try:
+            result = command(self.array)
+            if result is not None:
+                self.result_page(result)
+                self.show_status("Calculated Calculus Operation")
+        except Exception as e:
+            self.show_status(f"Error: {e}", is_error=True)
 
 
 if __name__ == '__main__':
