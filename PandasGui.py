@@ -5,6 +5,9 @@ from tkinter import filedialog, messagebox, ttk, simpledialog
 import pandas, numpy, pyperclip, datetime
 import matplotlib.pyplot as plt
 import io
+import json
+import os
+import threading
 
 # Try importing optional dependencies for stats/ML
 try:
@@ -19,194 +22,408 @@ except ImportError:
     LinearRegression, StandardScaler, OneHotEncoder = None, None, None
 
 
-class Window(CTk):
-    app_width = 340
-    app_height = 500
-    b_height = 3
-    b_width = 3
+class StateManager:
+    """Handles persistent state management for the application."""
+    def __init__(self, filename="pandagui_state.json"):
+        self.filename = filename
+        self.default_state = {
+            "view_mode": "Tabs",  # Options: "Tabs", "Phone", "MenuOnly"
+            "show_menu": True,
+            "theme": "Dark",
+            "geometry": "900x600",
+            "file_open_mode": "Dialog", # Options: "Dialog", "Buttons"
+            "font_size": "Medium" # Options: "Small", "Medium", "Large"
+        }
+        self.state = self.default_state.copy()
+        self.load()
 
+    def load(self):
+        if os.path.exists(self.filename):
+            try:
+                with open(self.filename, "r") as f:
+                    data = json.load(f)
+                    self.state.update(data)
+            except Exception as e:
+                print(f"Failed to load state: {e}")
+
+    def save(self):
+        try:
+            with open(self.filename, "w") as f:
+                json.dump(self.state, f)
+        except Exception as e:
+            print(f"Failed to save state: {e}")
+
+    def get(self, key):
+        return self.state.get(key, self.default_state.get(key))
+
+    def set(self, key, value):
+        self.state[key] = value
+        self.save()
+
+
+class Window(CTk):
     def __init__(self):
         super().__init__()
-        self.geometry(f'{self.app_width}x{self.app_height}')
+        self.state_manager = StateManager()
+        
         self.title('PandasGui')
         self.protocol("WM_DELETE_WINDOW", self.on_close)
         self.minsize(340, 430)
 
+        # Grid configuration
+        self.grid_columnconfigure(0, weight=0)  # Sidebar/Tabs column
+        self.grid_columnconfigure(1, weight=1)  # Data column
+        self.grid_rowconfigure(0, weight=1)     # Data row
+        self.grid_rowconfigure(1, weight=0)     # Phone layout row
+
         self.history = []
         self.history_index = -1
-
-        self.menu()
         self.changed = False
         self.upd_count = 0
         pandas.options.display.max_rows = 9999
 
-        # for settings!
+        # Initialize UI components
+        self.setup_menu()
+        self.setup_tabs()
+        self.setup_phone_layout()
+        self.setup_data_view()
 
-        self.buttons_frame = CTkFrame(self)
-        self.open_file = CTkButton(self.buttons_frame, text='open file', command=self.open, height=self.b_height,
-                                   width=self.b_width)
-        self.save_file = CTkButton(self.buttons_frame, text='save file', command=self.save, state=DISABLED,
-                                   height=self.b_height, width=self.b_width)
-        self.clean_m = CTkButton(self.buttons_frame, text='Clean empty', command=self.clean_empty, state=DISABLED,
-                                 height=self.b_height, width=self.b_width)
-        self.clean_d = CTkButton(self.buttons_frame, text='Clean duplicates', command=self.clean_duplicates,
-                                 state=DISABLED, height=self.b_height, width=self.b_width)
-        self.info_ = CTkButton(self.buttons_frame, text='Information ', command=self.info, state=DISABLED,
-                               height=self.b_height, width=self.b_width)
-        self.desc_ = CTkButton(self.buttons_frame, text='Describe ', command=self.describe, state=DISABLED,
-                               height=self.b_height, width=self.b_width)
-        self.delete_ = CTkButton(self.buttons_frame, text='Drop ', command=self.delete, state=DISABLED,
-                                 height=self.b_height, width=self.b_width)
-        self.replace_ = CTkButton(self.buttons_frame, text='Replace ', command=self.replace, state=DISABLED,
-                                  height=self.b_height, width=self.b_width)
-        self.abs_ = CTkButton(self.buttons_frame, text='Abs ', command=self.abs, state=DISABLED,
-                              height=self.b_height, width=self.b_width)
-        self.pow_ = CTkButton(self.buttons_frame, text='Pow ', command=self.pow, state=DISABLED,
-                              height=self.b_height, width=self.b_width)
-        self.mode_ = CTkButton(self.buttons_frame, text='Mode ', command=self.mode, state=DISABLED,
-                               height=self.b_height, width=self.b_width)
-        # count , sum, mean, median, min max
-        self.count_ = CTkButton(self.buttons_frame, text='Count', command=self.count, state=DISABLED,
-                                height=self.b_height, width=self.b_width)
-        self.sum_ = CTkButton(self.buttons_frame, text='Sum', command=self.sum, state=DISABLED, height=self.b_height,
-                              width=self.b_width)
-        self.mean_ = CTkButton(self.buttons_frame, text='Mean', command=self.mean, state=DISABLED, height=self.b_height,
-                               width=self.b_width)
-        self.median_ = CTkButton(self.buttons_frame, text='Median', command=self.median, state=DISABLED,
-                                 height=self.b_height, width=self.b_width)
-        self.min_ = CTkButton(self.buttons_frame, text='Min', command=self.min, state=DISABLED, height=self.b_height,
-                              width=self.b_width)
-        self.max_ = CTkButton(self.buttons_frame, text='Max', command=self.max, state=DISABLED, height=self.b_height,
-                              width=self.b_width)
-        self.rename_ = CTkButton(self.buttons_frame, text='Rename', command=self.rename, state=DISABLED,
-                                 height=self.b_height,
-                                 width=self.b_width)
-        self.nunique_ = CTkButton(self.buttons_frame, text='Nunique', command=self.nunique, state=DISABLED,
-                                  height=self.b_height,
-                                  width=self.b_width)
-        self.cumsum_ = CTkButton(self.buttons_frame, text='Cumsum', command=self.cumsum, state=DISABLED,
-                                 height=self.b_height,
-                                 width=self.b_width)
+        # Apply initial state (Theme and Font Scaling FIRST)
+        self.set_theme(self.state_manager.get("theme"))
+        self.apply_font_scaling(self.state_manager.get("font_size"))
+        self.update_view_mode()
+        
+        # Restore geometry AFTER scaling to prevent inflation
+        # We use after_idle to ensure the window is ready to accept geometry
+        self.after_idle(lambda: self.geometry(self.state_manager.get("geometry")))
 
-        self.bind("<Control-o>", self.open), self.bind("<Control-O>", self.open)
+        # Bindings
+        self.bind("<Control-o>", lambda e: self.handle_open_command())
+        self.bind("<Control-O>", lambda e: self.handle_open_command())
         self.bind('<Control-z>', lambda e: self.undo())
         self.bind('<Control-y>', lambda e: self.redo())
+        self.bind('<Control-s>', lambda e: self.save())
+        self.bind('<Control-S>', lambda e: self.save()) # Restored Shift+S binding
 
-    def clear(self):
-        self.data.delete(*self.data.get_children())
-        return
+    def setup_data_view(self):
+        self.data_frame = CTkFrame(self)
+        # Grid position will be managed by update_view_mode
+        
+        self.data_frame.grid_columnconfigure(0, weight=1)
+        self.data_frame.grid_rowconfigure(0, weight=1)
 
-    def open(self):
-        def file_by(via):
-            global fb
-            if via == 'f':
-                fb = 'file'
+        self.scroll_y = tkinter.Scrollbar(self.data_frame, orient="vertical")
+        self.scroll_x = tkinter.Scrollbar(self.data_frame, orient="horizontal")
+        
+        self.data = ttk.Treeview(self.data_frame, yscrollcommand=self.scroll_y.set, xscrollcommand=self.scroll_x.set)
+        
+        self.scroll_y.config(command=self.data.yview)
+        self.scroll_x.config(command=self.data.xview)
+        
+        self.data.grid(row=0, column=0, sticky="nsew")
+        self.scroll_y.grid(row=0, column=1, sticky="ns")
+        self.scroll_x.grid(row=1, column=0, sticky="ew")
+
+        self.data.heading("#0", text="No Data Loaded")
+
+    def setup_tabs(self):
+        self.tab_view = CTkTabview(self, width=250)
+        # Grid position managed by update_view_mode
+        
+        self.tabs = {
+            "File": self.create_file_tab,
+            "Edit": self.create_edit_tab,
+            "Stats": self.create_stats_tab,
+            "Cleaning": self.create_cleaning_tab,
+            "Plotting": self.create_plotting_tab,
+            "ML": self.create_ml_tab
+        }
+
+        for name, creator in self.tabs.items():
+            self.tab_view.add(name)
+            creator(self.tab_view.tab(name))
+
+    def setup_phone_layout(self):
+        # Use a scrollable frame for the phone layout to make it slimmer/scrollable
+        self.phone_frame = CTkScrollableFrame(self, height=200, orientation="vertical")
+        # Grid position managed by update_view_mode
+        
+        # Configure grid for phone layout (3 columns)
+        for i in range(3):
+            self.phone_frame.grid_columnconfigure(i, weight=1)
+        
+        self.phone_buttons = {}
+        
+        layout = [
+            (6, 0, 'Open', self.handle_open_command), (6, 1, 'Save', self.save), (6, 2, 'Info', self.info),
+            (5, 0, 'Clean Empty', self.clean_empty), (5, 2, 'Clean Dups', self.clean_duplicates),
+            (4, 0, 'Describe', self.describe), (4, 1, 'Drop', self.delete), (4, 2, 'Replace', self.replace),
+            (3, 0, 'Count', self.count), (3, 1, 'Sum', self.sum), (3, 2, 'Mean', self.mean),
+            (2, 0, 'Median', self.median), (2, 1, 'Min', self.min), (2, 2, 'Max', self.max),
+            (1, 0, 'Abs', self.abs), (1, 1, 'Pow', self.pow), (1, 2, 'Mode', self.mode),
+            (0, 0, 'Rename', self.rename), (0, 1, 'Nunique', self.nunique), (0, 2, 'Cumsum', self.cumsum)
+        ]
+        
+        for r, c, text, cmd in layout:
+            # Use threading for potentially heavy operations to prevent freezing
+            if cmd in [self.save, self.info, self.describe, self.count, self.sum, self.mean, self.median, self.min, self.max, self.abs, self.pow, self.mode, self.nunique, self.cumsum]:
+                 command = lambda c=cmd: self.run_async(c)
             else:
-                fb = 'link'
-            question_box.destroy()
-            open_()
+                 command = cmd
 
-        question_box = CTkToplevel()
-        question_box.title('File by')
-        question_title = CTkLabel(question_box, text='What is the preferred way to open the file by')
-        by_file = CTkButton(question_box, text='By (local) file', command=lambda: file_by('f'))
-        by_link = CTkButton(question_box, text='By link', command=lambda: file_by('l'))
-        question_title.grid(row=0, column=1)
-        by_file.grid(row=1, column=0)
-        by_link.grid(row=1, column=2)
+            btn = CTkButton(self.phone_frame, text=text, command=command, height=32)
+            btn.grid(row=r, column=c, padx=2, pady=2, sticky="ew")
+            self.phone_buttons[text] = btn
 
-        def open_():
-            if fb == 'file':
-                self.file_name = filedialog.askopenfilename(filetypes=(('CSV Files', '*.csv'), ('JSON FILES', '*.json'),
-                                                                       ('EXCEL Files', '*.xlsx')))
+    def create_file_tab(self, parent):
+        # Dynamic File Opening Buttons
+        self.file_buttons_frame = CTkFrame(parent, fg_color="transparent")
+        self.file_buttons_frame.pack(pady=5, fill="x")
+        self.update_file_buttons()
+
+        self.btn_save = CTkButton(parent, text="Save File", command=lambda: self.run_async(self.save), state=DISABLED)
+        self.btn_save.pack(pady=5, fill="x")
+        self.btn_info = CTkButton(parent, text="Info", command=lambda: self.run_async(self.info), state=DISABLED)
+        self.btn_info.pack(pady=5, fill="x")
+        self.btn_desc = CTkButton(parent, text="Describe", command=lambda: self.run_async(self.describe), state=DISABLED)
+        self.btn_desc.pack(pady=5, fill="x")
+
+    def update_file_buttons(self):
+        # Clear existing
+        for widget in self.file_buttons_frame.winfo_children():
+            widget.destroy()
+
+        mode = self.state_manager.get("file_open_mode")
+        if mode == "Dialog":
+            CTkButton(self.file_buttons_frame, text="Open...", command=self.open_dialog).pack(fill="x")
+        else:
+            CTkButton(self.file_buttons_frame, text="Open File", command=self.open_file).pack(pady=2, fill="x")
+            CTkButton(self.file_buttons_frame, text="Open Link", command=self.open_link).pack(pady=2, fill="x")
+
+    def create_edit_tab(self, parent):
+        CTkButton(parent, text="Undo", command=self.undo).pack(pady=5, fill="x")
+        CTkButton(parent, text="Redo", command=self.redo).pack(pady=5, fill="x")
+        self.btn_rename = CTkButton(parent, text="Rename Column", command=self.rename, state=DISABLED)
+        self.btn_rename.pack(pady=5, fill="x")
+        self.btn_replace = CTkButton(parent, text="Replace Value", command=self.replace, state=DISABLED)
+        self.btn_replace.pack(pady=5, fill="x")
+        self.btn_drop = CTkButton(parent, text="Drop Data", command=self.delete, state=DISABLED)
+        self.btn_drop.pack(pady=5, fill="x")
+
+    def create_stats_tab(self, parent):
+        scroll = CTkScrollableFrame(parent, fg_color="transparent")
+        scroll.pack(expand=True, fill="both")
+        
+        self.stats_buttons = []
+        stats_ops = [
+            ("Count", self.count), ("Sum", self.sum), ("Mean", self.mean),
+            ("Median", self.median), ("Min", self.min), ("Max", self.max),
+            ("Mode", self.mode), ("Nunique", self.nunique), ("Cumsum", self.cumsum),
+            ("Abs", self.abs), ("Pow", self.pow), ("T-Test", self.perform_ttest),
+            ("Chi-Squared", self.perform_chi2_test)
+        ]
+        
+        for text, cmd in stats_ops:
+            btn = CTkButton(scroll, text=text, command=lambda c=cmd: self.run_async(c), state=DISABLED)
+            btn.pack(pady=2, fill="x")
+            self.stats_buttons.append(btn)
+
+    def create_cleaning_tab(self, parent):
+        self.clean_buttons = []
+        clean_ops = [
+            ("Clean Empty", self.clean_empty),
+            ("Clean Duplicates", self.clean_duplicates),
+            ("Fill NA", self.fill_na),
+            ("One-Hot Encode", self.one_hot_encode),
+            ("Scale Data", self.scale_data)
+        ]
+        for text, cmd in clean_ops:
+            btn = CTkButton(parent, text=text, command=lambda c=cmd: self.run_async(c), state=DISABLED)
+            btn.pack(pady=5, fill="x")
+            self.clean_buttons.append(btn)
+
+    def create_plotting_tab(self, parent):
+        self.plot_buttons = []
+        plots = ["hist", "scatter", "line", "bar", "box"]
+        for p in plots:
+            btn = CTkButton(parent, text=f"{p.title()} Plot", command=lambda k=p: self.plot(k), state=DISABLED)
+            btn.pack(pady=5, fill="x")
+            self.plot_buttons.append(btn)
+
+    def create_ml_tab(self, parent):
+        self.ml_buttons = []
+        self.btn_linreg = CTkButton(parent, text="Linear Regression", command=lambda: self.run_async(self.linear_regression), state=DISABLED)
+        self.btn_linreg.pack(pady=5, fill="x")
+        self.ml_buttons.append(self.btn_linreg)
+
+    def run_async(self, func, *args):
+        """Runs a function in a separate thread to prevent UI freezing."""
+        threading.Thread(target=func, args=args, daemon=True).start()
+
+    def update_view_mode(self):
+        mode = self.state_manager.get("view_mode")
+        show_menu = self.state_manager.get("show_menu")
+        
+        # 1. Handle Menu
+        # If mode is MenuOnly, force menu to be shown regardless of toggle
+        if mode == "MenuOnly" or show_menu:
+            self.config(menu=self.menu_)
+        else:
+            self.config(menu=tkinter.Menu(self))
+
+        # 2. Handle Layout
+        self.tab_view.grid_forget()
+        self.phone_frame.grid_forget()
+        self.data_frame.grid_forget()
+        
+        if mode == "Tabs":
+            self.tab_view.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
+            self.data_frame.grid(row=0, column=1, sticky="nsew", padx=10, pady=10)
+            self.grid_rowconfigure(0, weight=1)
+            self.grid_rowconfigure(1, weight=0)
+            
+        elif mode == "Phone":
+            self.data_frame.grid(row=0, column=0, columnspan=2, sticky="nsew", padx=10, pady=10)
+            self.phone_frame.grid(row=1, column=0, columnspan=2, sticky="ew", padx=10, pady=10)
+            # Give less weight to phone frame row, more to data
+            self.grid_rowconfigure(0, weight=3)
+            self.grid_rowconfigure(1, weight=1)
+            
+        elif mode == "MenuOnly":
+            self.data_frame.grid(row=0, column=0, columnspan=2, sticky="nsew", padx=10, pady=10)
+            self.grid_rowconfigure(0, weight=1)
+            self.grid_rowconfigure(1, weight=0)
+
+    def update_button_states(self):
+        state = NORMAL if hasattr(self, 'dataframe') and self.dataframe is not None else DISABLED
+        
+        # Tab Buttons
+        self.btn_save.configure(state=state)
+        self.btn_info.configure(state=state)
+        self.btn_desc.configure(state=state)
+        self.btn_rename.configure(state=state)
+        self.btn_replace.configure(state=state)
+        self.btn_drop.configure(state=state)
+        
+        for btn in self.stats_buttons + self.clean_buttons + self.plot_buttons + self.ml_buttons:
+            btn.configure(state=state)
+            
+        # Phone Buttons
+        for text, btn in self.phone_buttons.items():
+            if text != 'Open': 
+                btn.configure(state=state)
+
+    def handle_open_command(self):
+        mode = self.state_manager.get("file_open_mode")
+        if mode == "Dialog":
+            self.open_dialog()
+        else:
+            # Default to file open if buttons mode is active but triggered via shortcut
+            self.open_file()
+
+    def open_dialog(self):
+        dialog = CTkToplevel(self)
+        dialog.title('Open File')
+        dialog.geometry("350x150")
+        dialog.transient(self)
+        dialog.grab_set()
+        
+        CTkLabel(dialog, text="How would you like to open the file?", font=("Arial", 14)).pack(pady=15)
+        
+        btn_frame = CTkFrame(dialog, fg_color="transparent")
+        btn_frame.pack(fill="x", padx=20)
+        
+        def by_file():
+            dialog.destroy()
+            self.open_file()
+            
+        def by_link():
+            dialog.destroy()
+            self.open_link()
+            
+        CTkButton(btn_frame, text="Local File", command=by_file).pack(side="left", expand=True, padx=5)
+        CTkButton(btn_frame, text="URL / Link", command=by_link).pack(side="right", expand=True, padx=5)
+
+    def open_file(self):
+        self.file_name = filedialog.askopenfilename(filetypes=(('CSV Files', '*.csv'), ('JSON FILES', '*.json'),
+                                                               ('EXCEL Files', '*.xlsx')))
+        if self.file_name:
+            self.load_file(self.file_name)
+
+    def open_link(self):
+        link = simpledialog.askstring('File link', 'Enter the file link (CSV/JSON):')
+        if link:
+            self.load_file(link, is_link=True)
+
+    def load_file(self, path, is_link=False):
+        try:
+            if path.endswith('.csv') or is_link:
+                self.dataframe = pandas.read_csv(path)
+                self.suffix = '.csv'
+            elif path.endswith('.json'):
+                self.suffix = '.json'
+                self.dataframe = pandas.read_json(path)
+            elif path.endswith('.xlsx'):
+                self.dataframe = pandas.read_excel(path)
+                self.suffix = '.xlsx'
             else:
-                self.file_name = simpledialog.askstring('File link', 'enter the file link')
-            # suffix = re.sub((r"(?:csv)$"))
-
-            if self.file_name:
-                try:
-                    if self.file_name.endswith('csv'):
-                        self.dataframe = pandas.read_csv(self.file_name)
-                        self.suffix = '.csv'
-                    elif self.file_name.endswith('json'):
-                        self.suffix = '.json'
-                        self.dataframe = pandas.read_json(self.file_name)
-                    elif self.file_name.endswith('xlsx'):
-                        self.dataframe = pandas.read_excel(self.file_name)
-                        self.suffix = '.xlsx'
-                except ValueError:
-                    tkinter.messagebox.showerror('file could not be open!')
-                except FileNotFoundError:
-                    tkinter.messagebox.showerror('file could not be found!')
-
-                # self.dataframe.plot()
-                # plt.show()
-                # self.data.configure(state=DISABLED)
-
-                self.save_file.configure(state=ACTIVE), self.clean_m.configure(state=ACTIVE)
-                self.clean_d.configure(state=ACTIVE), self.info_.configure(state=ACTIVE)
-                self.desc_.configure(state=ACTIVE), self.delete_.configure(state=ACTIVE)
-                self.replace_.configure(state=ACTIVE), self.count_.configure(state=ACTIVE)
-                self.sum_.configure(state=ACTIVE), self.mean_.configure(state=ACTIVE)
-                self.median_.configure(state=ACTIVE), self.min_.configure(state=ACTIVE)
-                self.max_.configure(state=ACTIVE), self.abs_.configure(state=ACTIVE), self.pow_.configure(state=ACTIVE)
-                self.mode_.configure(state=ACTIVE), self.rename_.configure(state=ACTIVE)
-                self.nunique_.configure(state=ACTIVE), self.cumsum_.configure(state=ACTIVE)
-
-                self.bind('<Control-Key-s>', self.save), self.bind('<Control-Key-S>', self.save)
-
-                self.history = []
-                self.history_index = -1
-                self.add_to_history(self.dataframe)
-                self.update_data()
+                self.dataframe = pandas.read_csv(path)
+                self.suffix = '.csv'
+                
+            self.history = []
+            self.history_index = -1
+            self.add_to_history(self.dataframe)
+            self.update_data()
+            self.update_button_states()
+            
+        except Exception as e:
+            messagebox.showerror('Error', f'Could not open file: {e}')
 
     def save(self):
+        if not self._require_data(): return
         if not (messagebox.askyesno('PandasGui', 'Would you like to replace the old data frame?')):
-            self.save_file = filedialog.asksaveasfile(defaultextension=((f'{self.suffix}')))
-            if self.save_file:
-                save = open(self.save_file.name, 'w')
+            self.save_file_handle = filedialog.asksaveasfile(defaultextension=((f'{self.suffix}')))
+            if self.save_file_handle:
+                save = open(self.save_file_handle.name, 'w')
                 save.write(self.dataframe.to_string())
                 save.close()
         else:
-            save = open(self.file_name, 'w')
-            save.write(self.dataframe.to_string())
-            save.close()
+            if hasattr(self, 'file_name') and os.path.exists(self.file_name):
+                save = open(self.file_name, 'w')
+                save.write(self.dataframe.to_string())
+                save.close()
+            else:
+                self.save_file_handle = filedialog.asksaveasfile(defaultextension=((f'{self.suffix}')))
+                if self.save_file_handle:
+                    save = open(self.save_file_handle.name, 'w')
+                    save.write(self.dataframe.to_string())
+                    save.close()
 
     def update_data(self):
-
-        self.data_frame = CTkFrame(self)
-        self.data_frame.pack(side=RIGHT, fill=Y)
-        self.scroll = tkinter.Scrollbar(self.data_frame)
-        self.scroll.pack(side=RIGHT, fill=Y)
-        # self.data = tkinter.Text(self.data_frame, yscrollcommand=self.scroll, background='black',
-        #                          foreground='green', font='arial 10')
-        # self.data.insert('1.0', self.dataframe)
-
-        self.data = ttk.Treeview(self, yscrollcommand=self.scroll.set)
+        # Must be run on main thread if called from async
+        if threading.current_thread() is not threading.main_thread():
+            self.after(0, self.update_data)
+            return
 
         self.clear()
-
+        
         self.data['column'] = list(self.dataframe.columns)
         self.data['show'] = 'headings'
         for cul in self.data['column']:
             self.data.heading(cul, text=cul)
-        content_rows = self.dataframe.to_numpy().tolist()
+        
+        content_rows = self.dataframe.head(1000).to_numpy().tolist()
         for row in content_rows:
             self.data.insert('', 'end', values=row)
 
-        self.data.focus_set()
-        self.data.pack(fill=BOTH, expand=True)
-        self.scroll.config(command=self.data.yview)
-
-        # self.cul = []
-        # for index in range(len(self.dataframe)):
-        #     pass
-        #     self.cul.append((self.dataframe.iloc[index]))
-        # self.cul = tuple(self.cul[0])
-
+        self.data.focus_set() # Restored focus
+        
         self.upd_count += 1
         if self.upd_count >= 2:
             self.changed = True
+
+    def clear(self):
+        self.data.delete(*self.data.get_children())
 
     def clean_empty(self):
         self._apply_op('Clean Empty', lambda: self.dataframe.dropna())
@@ -221,130 +438,202 @@ class Window(CTk):
         self.information_pop_msg(buffer.getvalue(), 'DataFrame Info')
 
     def describe(self):
-        des_root = CTkToplevel()
+        if not self._require_data(): return
+        
+        # Run on main thread
+        if threading.current_thread() is not threading.main_thread():
+            self.after(0, self.describe)
+            return
+
+        des_root = CTkToplevel(self)
         des_root.title('PandasGui - D.F description')
-        self.description = self.dataframe.describe()
-        des = CTkLabel(des_root, text=self.description)
-        des.pack(expand=True)
-        # des_root.resizable(False, False)
+        des_root.geometry("600x400")
+        
+        desc_text = CTkTextbox(des_root)
+        desc_text.pack(expand=True, fill="both", padx=10, pady=10)
+        desc_text.insert("1.0", self.dataframe.describe().to_string())
+        desc_text.configure(state="disabled")
 
     def delete(self):
-        def enter():
-            try:
-                # Use _apply_op to handle history
-                self._apply_op('Drop', lambda: self.dataframe.drop(columns=self.cul.get()))
-            except KeyError:
-                tkinter.messagebox.showerror('PandasGui', f'"{self.cul.get()}" was not found')
+        if not self._require_data(): return
+        
+        dialog = CTkToplevel(self)
+        dialog.title('Drop Data')
+        dialog.geometry("350x250")
+        dialog.transient(self)
+        dialog.grab_set()
 
-        drop_root = CTkToplevel()
-        drop_root.title('PandasGui - drop')
-        cul_title = CTkLabel(drop_root, text='Column')
-        row_title = CTkLabel(drop_root, text='Row')
-        self.cul = CTkEntry(drop_root)
-        self.row = CTkEntry(drop_root, state=DISABLED)
-        enter_button = CTkButton(drop_root, text='Enter', command=enter)
-        cul_title.grid(row=0, column=0)
-        row_title.grid(row=0, column=2)
-        self.cul.grid(row=1, column=0)
-        self.row.grid(row=1, column=2)
-        enter_button.grid(row=2, column=1)
+        # Mode selection
+        mode_var = StringVar(value="Column")
+        
+        # Frames for content
+        col_frame = CTkFrame(dialog, fg_color="transparent")
+        row_frame = CTkFrame(dialog, fg_color="transparent")
 
-        # drop_root.resizable(False, False)
-        # self.update_data() # Handled by _apply_op
+        def update_mode(val):
+            if val == "Column":
+                col_frame.pack(pady=10, fill="x")
+                row_frame.pack_forget()
+            else:
+                col_frame.pack_forget()
+                row_frame.pack(pady=10, fill="x")
+
+        seg = CTkSegmentedButton(dialog, values=["Column", "Row"], command=update_mode, variable=mode_var)
+        seg.pack(pady=10)
+
+        # Column Frame Content
+        CTkLabel(col_frame, text="Select Column:").pack(pady=5)
+        col_combobox = CTkComboBox(col_frame, values=self._get_columns())
+        col_combobox.pack(pady=5)
+        if self._get_columns(): col_combobox.set(self._get_columns()[0])
+        col_frame.pack(pady=10, fill="x") # Initial pack
+
+        # Row Frame Content
+        CTkLabel(row_frame, text="Row Index (int):").pack(pady=5)
+        row_entry = CTkEntry(row_frame, placeholder_text="e.g. 0")
+        row_entry.pack(pady=5)
+
+        def apply():
+            if mode_var.get() == "Column":
+                col = col_combobox.get()
+                if col:
+                    self._apply_op('Drop Column', lambda: self.dataframe.drop(columns=col))
+            else:
+                try:
+                    idx = int(row_entry.get())
+                    self._apply_op('Drop Row', lambda: self.dataframe.drop(index=idx))
+                except Exception as e:
+                    messagebox.showerror("Error", f"Invalid row index: {e}")
+            dialog.destroy()
+
+        CTkButton(dialog, text="Drop", command=apply, fg_color="red").pack(pady=10)
 
     def replace(self):
-        def enter():
-            try:
-                self._apply_op('Replace', lambda: self.dataframe.replace(self.old_value.get(), self.new_value.get()))
-            except KeyError:
-                tkinter.messagebox.showerror('PandasGui', f'"{self.old_value.get()}" was not found')
-
-        replace_root = CTkToplevel()
-        replace_root.title('PandasGui - replace')
-        oldv_title = CTkLabel(replace_root, text='Existing value')
-        newv_title = CTkLabel(replace_root, text='New value')
-        self.old_value = CTkEntry(replace_root)
-        self.new_value = CTkEntry(replace_root)
-        enter_button = CTkButton(replace_root, text='Enter', command=enter)
-        oldv_title.grid(row=0, column=0)
-        newv_title.grid(row=0, column=2)
-        self.old_value.grid(row=1, column=0)
-        self.new_value.grid(row=1, column=2)
-        enter_button.grid(row=2, column=1)
+        if not self._require_data(): return
+        
+        dialog = CTkToplevel(self)
+        dialog.title('Replace Value')
+        dialog.geometry("300x200")
+        
+        CTkLabel(dialog, text="Old Value:").pack(pady=5)
+        old_entry = CTkEntry(dialog)
+        old_entry.pack(pady=5)
+        
+        CTkLabel(dialog, text="New Value:").pack(pady=5)
+        new_entry = CTkEntry(dialog)
+        new_entry.pack(pady=5)
+        
+        def apply():
+            old_val = old_entry.get()
+            new_val = new_entry.get()
+            try: old_val = float(old_val)
+            except: pass
+            try: new_val = float(new_val)
+            except: pass
+            
+            self._apply_op('Replace', lambda: self.dataframe.replace(old_val, new_val))
+            dialog.destroy()
+            
+        CTkButton(dialog, text="Apply", command=apply).pack(pady=10)
 
     def rename(self):
-        def enter():
-            try:
-                self._apply_op('Rename',
-                               lambda: self.dataframe.rename(columns={self.oldc_value.get(): self.newc_value.get()}))
-            except KeyError:
-                tkinter.messagebox.showerror('PandasGui', f'"{self.oldc_value.get()}" was not found')
+        if not self._require_data(): return
+        
+        dialog = CTkToplevel(self)
+        dialog.title('Rename Column')
+        dialog.geometry("350x250")
+        dialog.transient(self)
+        dialog.grab_set()
 
-        rename_root = CTkToplevel()
-        rename_root.title('PandasGui - rename')
-        oldv_title = CTkLabel(rename_root, text='Existing column name')
-        newv_title = CTkLabel(rename_root, text='New column name')
-        self.oldc_value = CTkEntry(rename_root)
-        self.newc_value = CTkEntry(rename_root)
-        enter_button = CTkButton(rename_root, text='Enter', command=enter)
-        oldv_title.grid(row=0, column=0)
-        newv_title.grid(row=0, column=2)
-        self.oldc_value.grid(row=1, column=0)
-        self.newc_value.grid(row=1, column=2)
-        enter_button.grid(row=2, column=1)
+        CTkLabel(dialog, text="Select Column:").pack(pady=5)
+        col_combobox = CTkComboBox(dialog, values=self._get_columns())
+        col_combobox.pack(pady=5)
+        if self._get_columns(): col_combobox.set(self._get_columns()[0])
+
+        CTkLabel(dialog, text="New Name:").pack(pady=5)
+        new_name_entry = CTkEntry(dialog)
+        new_name_entry.pack(pady=5)
+
+        def apply():
+            col = col_combobox.get()
+            new_name = new_name_entry.get()
+            if col and new_name:
+                self._apply_op('Rename', lambda: self.dataframe.rename(columns={col: new_name}))
+                dialog.destroy()
+
+        CTkButton(dialog, text="Rename", command=apply).pack(pady=20)
 
     def count(self):
+        if not self._require_data(): return
         count_info = self.dataframe.count()
         self.information_pop_msg(count_info, 'count')
 
     def information_pop_msg(self, result, operation_name):
-        result_root = tkinter.Toplevel()
+        # Ensure UI updates happen on main thread
+        if threading.current_thread() is not threading.main_thread():
+            self.after(0, lambda: self.information_pop_msg(result, operation_name))
+            return
+
+        result_root = CTkToplevel(self)
         time = datetime.datetime.now().strftime('%H:%M:%S')
         result_root.title(f'{operation_name} - {time}')
-        result_output = CTkLabel(result_root, text=f'{result}', fg_color='black')
-        copy_button = CTkButton(result_root, text='Copy', command=lambda: pyperclip.copy(str(result)), width=10)
-        result_output.pack()
-        copy_button.pack()
+        result_root.geometry("400x300")
+        
+        result_text = CTkTextbox(result_root)
+        result_text.pack(expand=True, fill="both", padx=10, pady=10)
+        result_text.insert("1.0", str(result))
+        result_text.configure(state="disabled")
+        
+        CTkButton(result_root, text='Copy', command=lambda: pyperclip.copy(str(result))).pack(pady=5)
 
-    def menu(self):
+    def setup_menu(self):
         self.menu_ = tkinter.Menu(self)
         self.config(menu=self.menu_)
 
         file_menu = tkinter.Menu(self.menu_, tearoff=False)
         self.menu_.add_cascade(label='File', menu=file_menu)
-        file_menu.add_command(label='Open', command=self.open)
-        file_menu.add_command(label='Save', command=self.save)
+        file_menu.add_command(label='Open', command=self.handle_open_command)
+        file_menu.add_command(label='Save', command=lambda: self.run_async(self.save))
+        file_menu.add_separator()
+        file_menu.add_command(label='Info', command=lambda: self.run_async(self.info))
+        file_menu.add_command(label='Describe', command=lambda: self.run_async(self.describe))
 
         edit_menu = tkinter.Menu(self.menu_, tearoff=False)
         self.menu_.add_cascade(label='Edit', menu=edit_menu)
         edit_menu.add_command(label='Undo', command=self.undo)
         edit_menu.add_command(label='Redo', command=self.redo)
+        edit_menu.add_separator()
+        edit_menu.add_command(label='Rename Column', command=self.rename)
+        edit_menu.add_command(label='Replace Value', command=self.replace)
 
         statistics_menu = tkinter.Menu(self.menu_, tearoff=False)
         self.menu_.add_cascade(label='Statistics', menu=statistics_menu)
-        statistics_menu.add_command(label='Mode', command=self.mode)
-        statistics_menu.add_command(label='Median', command=self.median)
-        statistics_menu.add_command(label='Mean', command=self.mean)
-        statistics_menu.add_command(label='Min', command=self.min)
-        statistics_menu.add_command(label='Max', command=self.max)
-        statistics_menu.add_command(label='Cumsum', command=self.cumsum)
-        statistics_menu.add_command(label='T-Test', command=self.perform_ttest)
-        statistics_menu.add_command(label='Chi-Squared', command=self.perform_chi2_test)
+        statistics_menu.add_command(label='Count', command=lambda: self.run_async(self.count))
+        statistics_menu.add_command(label='Nunique', command=lambda: self.run_async(self.nunique))
+        statistics_menu.add_separator()
+        statistics_menu.add_command(label='Mode', command=lambda: self.run_async(self.mode))
+        statistics_menu.add_command(label='Median', command=lambda: self.run_async(self.median))
+        statistics_menu.add_command(label='Mean', command=lambda: self.run_async(self.mean))
+        statistics_menu.add_command(label='Min', command=lambda: self.run_async(self.min))
+        statistics_menu.add_command(label='Max', command=lambda: self.run_async(self.max))
+        statistics_menu.add_command(label='Cumsum', command=lambda: self.run_async(self.cumsum))
+        statistics_menu.add_command(label='T-Test', command=lambda: self.run_async(self.perform_ttest))
+        statistics_menu.add_command(label='Chi-Squared', command=lambda: self.run_async(self.perform_chi2_test))
 
         arithmetic_menu = tkinter.Menu(self.menu_, tearoff=False)
         self.menu_.add_cascade(label='Arithmetics', menu=arithmetic_menu)
-        arithmetic_menu.add_command(label='Sum', command=self.sum)
-        arithmetic_menu.add_command(label='Pow', command=self.pow)
-        arithmetic_menu.add_command(label='Abs', command=self.abs)
+        arithmetic_menu.add_command(label='Sum', command=lambda: self.run_async(self.sum))
+        arithmetic_menu.add_command(label='Pow', command=lambda: self.run_async(self.pow))
+        arithmetic_menu.add_command(label='Abs', command=lambda: self.run_async(self.abs))
 
         cleaning_menu = tkinter.Menu(self.menu_, tearoff=False)
         self.menu_.add_cascade(label='Cleaning', menu=cleaning_menu)
-        cleaning_menu.add_command(label='Clean empty', command=self.clean_empty)
-        cleaning_menu.add_command(label='Cleaning duplicates', command=self.clean_duplicates)
+        cleaning_menu.add_command(label='Clean empty', command=lambda: self.run_async(self.clean_empty))
+        cleaning_menu.add_command(label='Cleaning duplicates', command=lambda: self.run_async(self.clean_duplicates))
         cleaning_menu.add_command(label='Delete', command=self.delete)
-        cleaning_menu.add_command(label='Fill NA', command=self.fill_na)
-        cleaning_menu.add_command(label='One-Hot Encode', command=self.one_hot_encode)
-        cleaning_menu.add_command(label='Scale Data', command=self.scale_data)
+        cleaning_menu.add_command(label='Fill NA', command=lambda: self.run_async(self.fill_na))
+        cleaning_menu.add_command(label='One-Hot Encode', command=lambda: self.run_async(self.one_hot_encode))
+        cleaning_menu.add_command(label='Scale Data', command=lambda: self.run_async(self.scale_data))
 
         plotting_menu = tkinter.Menu(self.menu_, tearoff=False)
         self.menu_.add_cascade(label='Plotting', menu=plotting_menu)
@@ -356,85 +645,112 @@ class Window(CTk):
 
         ml_menu = tkinter.Menu(self.menu_, tearoff=False)
         self.menu_.add_cascade(label='ML', menu=ml_menu)
-        ml_menu.add_command(label='Linear Regression', command=self.linear_regression)
-
-        other_menu = tkinter.Menu(self.menu_, tearoff=False)
-        self.menu_.add_cascade(label='Other', menu=other_menu)
-        other_menu.add_command(label='Replace', command=self.replace)
-        other_menu.add_command(label='Info', command=self.info)
-        other_menu.add_command(label='Describe', command=self.describe)
-        other_menu.add_command(label='Count', command=self.describe)
-        other_menu.add_command(label='Rename columns', command=self.rename)
-        other_menu.add_command(label='nunique', command=self.nunique)
+        ml_menu.add_command(label='Linear Regression', command=lambda: self.run_async(self.linear_regression))
 
         self.menu_.add_cascade(label='Settings', command=self.settings)
 
     def settings(self):
-
-        def buttons_grid():
-            self.menu_.destroy()
-            self.buttons_frame.pack(side=tkinter.BOTTOM, fill=X)
-            self.open_file.grid(row=6, column=0, columnspan=1, padx=35, pady=2)
-            self.save_file.grid(row=6, column=1, columnspan=1)
-            self.info_.grid(row=6, column=2, columnspan=1)
-            self.clean_m.grid(row=5, column=0, columnspan=1, pady=2)
-            self.clean_d.grid(row=5, column=2, columnspan=1)
-            self.desc_.grid(row=4, column=0, columnspan=1, pady=2)
-            self.delete_.grid(row=4, column=1, columnspan=1)
-            self.replace_.grid(row=4, column=2, columnspan=1)
-            self.count_.grid(row=3, column=0, columnspan=1, pady=2)
-            self.sum_.grid(row=3, column=1, columnspan=1)
-            self.mean_.grid(row=3, column=2, columnspan=1)
-            self.median_.grid(row=2, column=0, columnspan=1, pady=2)
-            self.min_.grid(row=2, column=1, columnspan=1)
-            self.max_.grid(row=2, column=2, columnspan=1)
-            self.abs_.grid(row=1, column=0, columnspan=1, pady=2)
-            self.pow_.grid(row=1, column=1, columnspan=1)
-            self.mode_.grid(row=1, column=2, columnspan=1)
-            self.rename_.grid(row=0, column=0, columnspan=1)
-            self.nunique_.grid(row=0, column=1, columnspan=1)
-            self.cumsum_.grid(row=0, column=2, columnspan=1)
-
-            # self.open_file.pack(side=tkinter.LEFT)
-            # self.save_file.pack(side=tkinter.LEFT)
-            # self.info_.pack(side=tkinter.LEFT)
-            # self.clean_m.pack(side=tkinter.LEFT)
-            # self.clean_d.pack(side=tkinter.LEFT)
-            # self.desc_.pack()
-
-        def menus_():
-            self.buttons_frame.pack_forget()
-            self.menu()
-
-        def dark_theme():
-            customtkinter.set_appearance_mode('dark')
-
-        def light_theme():
-            customtkinter.set_appearance_mode('light')
-
-        root = CTkToplevel()
+        root = CTkToplevel(self)
         root.title('Settings')
+        root.geometry("400x500")
+        root.transient(self)
+        root.grab_set()
 
-        ui_style_title = CTkLabel(root, text='preferred UI')
-        buttons_ui_button = CTkButton(root, text='By buttons', command=buttons_grid)
-        menus_ui_button = CTkButton(root, text='By menus', command=menus_)
+        # Layout Mode
+        CTkLabel(root, text='Layout Mode', font=("Arial", 14, "bold")).pack(pady=(10, 5))
+        
+        mode_var = StringVar(value=self.state_manager.get("view_mode"))
+        
+        def change_mode(val):
+            self.state_manager.set("view_mode", val)
+            self.update_view_mode()
+            
+        seg_btn = CTkSegmentedButton(root, values=["Tabs", "Phone", "MenuOnly"],
+                                     variable=mode_var, command=change_mode)
+        seg_btn.pack(pady=5)
 
-        themes_title = CTkLabel(root, text='preferred theme')
-        dark_mode_button = CTkButton(root, text='Dark mode', command=dark_theme)
-        light_mode_button = CTkButton(root, text='Light mode', command=light_theme)
+        # Menu Visibility
+        CTkLabel(root, text='Visibility', font=("Arial", 14, "bold")).pack(pady=(15, 5))
+        
+        menu_var = BooleanVar(value=self.state_manager.get("show_menu"))
+        
+        def toggle_menu():
+            val = menu_var.get()
+            self.state_manager.set("show_menu", val)
+            self.update_view_mode()
+            
+        CTkCheckBox(root, text="Show Menu Bar", variable=menu_var, command=toggle_menu).pack(pady=5)
 
-        ui_style_title.grid(row=1, column=1)
-        buttons_ui_button.grid(row=2, column=0)
-        menus_ui_button.grid(row=2, column=2)
-        themes_title.grid(row=3, column=1)
-        dark_mode_button.grid(row=4, column=0)
-        light_mode_button.grid(row=4, column=2)
+        # File Open Preference
+        CTkLabel(root, text='File Open Preference', font=("Arial", 14, "bold")).pack(pady=(15, 5))
+        
+        file_mode_var = StringVar(value=self.state_manager.get("file_open_mode"))
+        
+        def change_file_mode(val):
+            self.state_manager.set("file_open_mode", val)
+            self.update_file_buttons()
+            
+        file_seg_btn = CTkSegmentedButton(root, values=["Dialog", "Buttons"],
+                                          variable=file_mode_var, command=change_file_mode)
+        file_seg_btn.pack(pady=5)
+
+        # Font Size
+        CTkLabel(root, text='Font Size', font=("Arial", 14, "bold")).pack(pady=(15, 5))
+        
+        font_var = StringVar(value=self.state_manager.get("font_size"))
+        
+        def change_font(val):
+            self.state_manager.set("font_size", val)
+            self.apply_font_scaling(val)
+            
+        font_seg_btn = CTkSegmentedButton(root, values=["Small", "Medium", "Large"],
+                                          variable=font_var, command=change_font)
+        font_seg_btn.pack(pady=5)
+
+        # Theme
+        CTkLabel(root, text='Theme', font=("Arial", 14, "bold")).pack(pady=(15, 5))
+
+        def set_dark():
+            self.set_theme("Dark")
+
+        def set_light():
+            self.set_theme("Light")
+
+        theme_frame = CTkFrame(root, fg_color="transparent")
+        theme_frame.pack(pady=5)
+
+        current_theme = self.state_manager.get("theme")
+        
+        btn_dark = CTkButton(theme_frame, text='Dark', command=set_dark, width=80,
+                             fg_color="green" if current_theme == "Dark" else None)
+        btn_dark.pack(side="left", padx=5)
+        
+        btn_light = CTkButton(theme_frame, text='Light', command=set_light, width=80,
+                              fg_color="green" if current_theme == "Light" else None)
+        btn_light.pack(side="left", padx=5)
+
+    def set_theme(self, theme):
+        if theme == "Dark":
+            customtkinter.set_appearance_mode('dark')
+        else:
+            customtkinter.set_appearance_mode('light')
+        self.state_manager.set("theme", theme)
+        # Force update to prevent freeze
+        self.update_idletasks()
+
+        # Refresh settings window if open to update button colors
+        # (Simple way: close and reopen, or just let user reopen.
+        # Here we just rely on next open or manual refresh if we wanted to be fancy)
+
+    def apply_font_scaling(self, size):
+        scaling = 1.0
+        if size == "Small": scaling = 0.8
+        elif size == "Large": scaling = 1.2
+        
+        customtkinter.set_widget_scaling(scaling)
+        customtkinter.set_window_scaling(scaling)
 
     def _require_data(self) -> bool:
-        """
-        Ensure a DataFrame is loaded before proceeding.
-        Returns True if data is available, otherwise shows an info popup and returns False.
-        """
         if getattr(self, "dataframe", None) is None:
             try:
                 self.information_pop_msg("No data loaded", "Please open a data file first.")
@@ -444,11 +760,7 @@ class Window(CTk):
         return True
 
     def _get_numeric_columns(self):
-        """
-        Returns a list of numeric column names in the current DataFrame.
-        If there are no numeric columns, returns an empty list.
-        """
-        import numpy as _np  # local import to avoid top-level dependency impacts
+        import numpy as _np
         if not self._require_data():
             return []
         try:
@@ -463,41 +775,23 @@ class Window(CTk):
         return list(self.dataframe.columns)
 
     def _apply_op(self, op_name: str, fn):
-        """
-        Unified mutation pipeline:
-        - Checks that data is loaded
-        - Executes the provided function (which should mutate or return a new DataFrame)
-        - Assigns back if a new DataFrame is returned
-        - Marks 'changed', increments 'upd_count', and calls update_data() once
-        - Handles and reports errors uniformly
-        """
         if not self._require_data():
             return
         try:
             result = fn()
             if result is not None:
-                # allow functional style: return a new df
                 new_df = result
             else:
-                # If fn modified in place (which we try to avoid now), assume self.dataframe is new state
-                # But for history, we need to be careful.
-                # Ideally fn returns the new dataframe.
                 new_df = self.dataframe
 
             self.add_to_history(new_df)
             self.dataframe = new_df
-
-            # mark changed and update views exactly once
             self.changed = True
             self.upd_count += 1
             try:
                 self.update_data()
             except Exception as e:
-                # Surface update errors but keep the data change
                 self.information_pop_msg(f"{op_name} - UI update failed", str(e))
-            else:
-                # Optional: lightweight success status (avoid modal spam)
-                pass
         except Exception as e:
             try:
                 self.information_pop_msg(f"{op_name} failed", str(e))
@@ -505,9 +799,6 @@ class Window(CTk):
                 pass
 
     def _apply_numeric_unary(self, op_name: str, series_op):
-        """
-        Apply an element-wise Series -> Series operation to all numeric columns.
-        """
         if not self._require_data():
             return
         cols = self._get_numeric_columns()
@@ -517,23 +808,16 @@ class Window(CTk):
 
         def _runner():
             df = self.dataframe.copy()
-            # Operate only on a view of numeric columns to avoid dtype regressions on other columns
             for c in cols:
-                # Each column individually to better surface column-specific errors
                 try:
                     df[c] = series_op(df[c])
                 except Exception as col_err:
-                    # best-effort: continue on others, then raise aggregated info
                     raise type(col_err)(f"Column '{c}': {col_err}")
-            return df  # in-place change; return for consistency
+            return df
 
         self._apply_op(op_name, _runner)
 
     def _numeric_summary(self, op_name: str, reducer):
-        """
-        Compute a per-column numeric summary without mutating the DataFrame.
-        Shows a popup with the results and stores them on matching attributes when present.
-        """
         if not self._require_data():
             return
 
@@ -545,14 +829,11 @@ class Window(CTk):
             return
 
         try:
-            # reducer should return a Series indexed by column names
             result = reducer(num_df)
         except Exception as e:
             self.information_pop_msg(f"{op_name} failed", str(e))
             return
 
-        # Persist on attribute if available (sum_ / min_ / max_ / mean_ / median_)
-        # Store as dict for easier later use; also render nicely for popup.
         result_dict = {str(k): result[k] for k in result.index}
         attr_name = {
             "Sum": "sum_",
@@ -567,12 +848,10 @@ class Window(CTk):
             except Exception:
                 pass
 
-        # Compose a readable message
         lines = [f"{op_name} per column (numeric only):"]
         for k in result.index:
             try:
                 v = result[k]
-                # Compact formatting for floats
                 if isinstance(v, float):
                     lines.append(f"- {k}: {v:.6g}")
                 else:
@@ -583,54 +862,27 @@ class Window(CTk):
         self.information_pop_msg(f"{op_name} result", msg)
 
     def sum(self):
-        """
-        Show column-wise sum for numeric columns without mutating the DataFrame.
-        Previous behavior that could coerce/mutate is replaced with a safe summary.
-        """
         self._numeric_summary("Sum", lambda df: df.sum(numeric_only=True))
 
     def min(self):
-        """
-        Show column-wise min for numeric columns without mutating the DataFrame.
-        """
         self._numeric_summary("Min", lambda df: df.min(numeric_only=True))
 
     def max(self):
-        """
-        Show column-wise max for numeric columns without mutating the DataFrame.
-        """
         self._numeric_summary("Max", lambda df: df.max(numeric_only=True))
 
     def mean(self):
-        """
-        Show column-wise mean for numeric columns without mutating the DataFrame.
-        """
         self._numeric_summary("Mean", lambda df: df.mean(numeric_only=True))
 
     def median(self):
-        """
-        Show column-wise median for numeric columns without mutating the DataFrame.
-        """
         self._numeric_summary("Median", lambda df: df.median(numeric_only=True))
 
     def abs(self):
-        """
-        Element-wise absolute value on numeric columns only.
-        """
-        # before: unguarded operation across all columns could raise or coerce incorrectly
         self._apply_numeric_unary("Absolute", lambda s: s.abs())
 
     def cumsum(self):
-        """
-        Element-wise cumulative sum on numeric columns only (skip NaN).
-        """
         self._apply_numeric_unary("Cumulative sum", lambda s: s.cumsum(skipna=True))
 
     def pow(self):
-        """
-        Element-wise power on numeric columns only.
-        Asks user for exponent.
-        """
         try:
             val = simpledialog.askfloat('Power', 'Enter exponent:', initialvalue=2.0)
             if val is None:
@@ -642,10 +894,6 @@ class Window(CTk):
         self._apply_numeric_unary(f"Power (**{exp})", lambda s: s.pow(exp))
 
     def mode(self):
-        """
-        Show column-wise mode for numeric columns without mutating the DataFrame.
-        """
-        # Mode can return multiple rows, so we handle it slightly differently than _numeric_summary
         if not self._require_data():
             return
 
@@ -658,15 +906,11 @@ class Window(CTk):
 
         try:
             m = num_df.mode()
-            # Format for display
             self.information_pop_msg("Mode result (numeric)", m.to_string())
         except Exception as e:
             self.information_pop_msg("Mode failed", str(e))
 
     def nunique(self):
-        """
-        Show column-wise unique count for numeric columns.
-        """
         self._numeric_summary("Nunique", lambda df: df.nunique())
 
     def add_to_history(self, df):
@@ -679,27 +923,21 @@ class Window(CTk):
             self.history_index -= 1
             self.dataframe = self.history[self.history_index].copy()
             self.update_data()
-            # self.status_bar.configure(text='Undo successful.') # No status bar in l1 yet
         else:
             pass
-            # self.status_bar.configure(text='Nothing to undo.')
 
     def redo(self):
         if self.history_index < len(self.history) - 1:
             self.history_index += 1
             self.dataframe = self.history[self.history_index].copy()
             self.update_data()
-            # self.status_bar.configure(text='Redo successful.')
         else:
             pass
-            # self.status_bar.configure(text='Nothing to redo.')
 
     def _ask_column(self, title, columns):
         dialog = CTkToplevel(self)
         dialog.title('Select Column')
         dialog.geometry('300x150')
-
-        # Make dialog modal
         dialog.transient(self)
         dialog.grab_set()
 
@@ -771,12 +1009,9 @@ class Window(CTk):
             except Exception as e:
                 messagebox.showerror('Plotting Error', str(e))
 
-    # --- New Features from l2 ---
-
     def fill_na(self):
         val = simpledialog.askstring('Fill NA', 'Enter value (or mean/median/mode):', parent=self)
         if val:
-            # Check for special keywords
             if val.lower() == 'mean':
                 self._apply_op('Fill NA (Mean)', lambda: self.dataframe.fillna(self.dataframe.mean(numeric_only=True)))
                 return
@@ -785,7 +1020,6 @@ class Window(CTk):
                                lambda: self.dataframe.fillna(self.dataframe.median(numeric_only=True)))
                 return
             elif val.lower() == 'mode':
-                # Mode returns a DataFrame, take the first row
                 self._apply_op('Fill NA (Mode)', lambda: self.dataframe.fillna(self.dataframe.mode().iloc[0]))
                 return
 
@@ -798,7 +1032,6 @@ class Window(CTk):
     def one_hot_encode(self):
         col = self._ask_column('Select column:', self._get_columns(string_only=True))
         if col:
-            # Safety check for high cardinality
             if self.dataframe[col].nunique() > 20:
                 if not messagebox.askyesno('High Cardinality',
                                            f'Column "{col}" has {self.dataframe[col].nunique()} unique values.\nThis will create many columns. Continue?'):
@@ -849,7 +1082,6 @@ class Window(CTk):
         y_col = self._ask_column('Y:', self._get_numeric_columns())
         if x_col and y_col:
             try:
-                # Drop NaNs from both columns simultaneously to keep alignment
                 data = self.dataframe[[x_col, y_col]].dropna()
                 if data.empty:
                     raise ValueError("No valid data points after dropping NaNs")
@@ -903,6 +1135,9 @@ class Window(CTk):
         return self.nunique()
 
     def on_close(self):
+        # Save state before closing
+        self.state_manager.set("geometry", self.geometry())
+        
         if self.changed:
             if messagebox.askyesno('PandasGui', 'there is some unsaved progress are you sure you want to quit'):
                 self.destroy()
@@ -912,5 +1147,4 @@ class Window(CTk):
 
 if __name__ == '__main__':
     App = Window()
-    set_appearance_mode('dark')
     App.mainloop()
