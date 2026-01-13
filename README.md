@@ -34,7 +34,7 @@ A powerful tool for viewing, cleaning, and analyzing Pandas DataFrames.
 *   **Data Management**: Open and save CSV, JSON, and Excel files.
 *   **History**: Full **Undo/Redo** support for all data modifications.
 *   **Cleaning**: 
-    *   Remove empty rows/duplicates, drop columns, rename columns, and replace values.
+    *   Remove empty rows/duplicates, drop columns/rows, rename columns, and replace values.
     *   **Smart Fill NA**: Auto-fill missing data using Mean, Median, or Mode.
     *   **One-Hot Encoding**: Convert categorical data for ML readiness.
 *   **Analysis**: 
@@ -44,7 +44,10 @@ A powerful tool for viewing, cleaning, and analyzing Pandas DataFrames.
 *   **Visualization**: 
     *   Tabular view of your data with vertical scrolling.
     *   **Integrated Plotting**: Create Histograms, Scatter, Line, Bar, and Box plots directly from your data.
-*   **Customization**: Switch between a Button Grid or Menu Bar layout; toggle Dark/Light themes.
+*   **Modern Architecture**:
+    *   **Persistent State**: Remembers your theme, window size, and layout preferences.
+    *   **Multiple Layouts**: Choose from **Tabs**, **Phone** (compact grid), or **Menu Only** modes.
+    *   **Async Performance**: Heavy operations run in the background to keep the UI responsive.
 
 ## 🛠️ Installation
 
